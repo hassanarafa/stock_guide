@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/onBoardBody.dart';
+
 class OnBoard extends StatelessWidget {
   const OnBoard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [Text("Welcome Back")],
-        ),
-      ),
-    );
+    return Scaffold(body: OnBoardingBody());
   }
 }
