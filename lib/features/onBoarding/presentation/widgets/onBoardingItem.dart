@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../constants.dart';
 
@@ -26,18 +27,22 @@ class OnboardingItem extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 35,
+              style: GoogleFonts.montserrat(
+                textStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 35,
+                ),
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 18),
             Text(
               description,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: secondaryTextColor,
+              style: GoogleFonts.montserrat(
+                textStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: secondaryTextColor,
+                ),
               ),
               textAlign: TextAlign.center,
             ),

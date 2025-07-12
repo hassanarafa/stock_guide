@@ -43,7 +43,7 @@ class _OnBoardingBodyState extends State<OnBoardingBody> {
       );
     } else {
       Get.offAll(
-            () => LoginView(),
+        () => const LoginView(),
         transition: Transition.fade,
         duration: transactionDuration,
       );
@@ -61,56 +61,102 @@ class _OnBoardingBodyState extends State<OnBoardingBody> {
 
   void _skip() {
     Get.offAll(
-          () => LoginView(),
+      () => const LoginView(),
       transition: Transition.fade,
       duration: transactionDuration,
+    );
+  }
+
+  Widget _buildDotIndicator(int index) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: _currentPage == index ? 20 : 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: _currentPage == index ? Colors.blue : Colors.grey[400],
+        borderRadius: BorderRadius.circular(20),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: _pages.length,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            itemBuilder: (context, index) => _pages[index],
-          ),
-          Positioned(
-            bottom: 40,
-            left: 20,
-            right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (_currentPage > 0)
-                  ElevatedButton(
-                    onPressed: _goToPrevious,
-                    child: const Text("السابق"),
-                  )
-                else
-                  const SizedBox(width: 80), // Placeholder for alignment
-
-                if (_currentPage < _pages.length - 1)
-                  TextButton(onPressed: _skip, child: const Text("تخطي"))
-                else
-                  const SizedBox(width: 80),
-
-                ElevatedButton(
-                  onPressed: _goToNext,
-                  child: Text(
-                    _currentPage == _pages.length - 1 ? "ابدأ" : "التالي",
-                  ),
-                ),
-              ],
+      body: Container(
+        color: Colors.white,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: _pages.length,
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              itemBuilder: (context, index) => _pages[index],
             ),
-          ),
-        ],
+            Positioned(
+              bottom: 100,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _pages.length,
+                  (index) => _buildDotIndicator(index),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 30,
+              left: 20,
+              right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (_currentPage > 0)
+                    ElevatedButton(
+                      onPressed: _goToPrevious,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[300],
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: const Text("السابق"),
+                    )
+                  else
+                    const SizedBox(width: 80), // alignment placeholder
+
+                  if (_currentPage < _pages.length - 1)
+                    TextButton(
+                      onPressed: _skip,
+                      child: const Text(
+                        "تخطي",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 80),
+
+                  ElevatedButton(
+                    onPressed: _goToNext,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: Text(
+                      _currentPage == _pages.length - 1 ? "ابدأ" : "التالي",
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-
-

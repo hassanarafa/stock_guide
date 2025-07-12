@@ -27,10 +27,13 @@ class _SplashViewBodyState extends State<SplashViewBody> {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [Image(image: AssetImage(AssetsDAta.logo))],
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [Image(image: AssetImage(AssetsDAta.logo))],
+        ),
       ),
     );
   }
