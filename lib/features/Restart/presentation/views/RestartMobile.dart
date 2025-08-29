@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 class RestartMobile extends StatefulWidget {
-  const RestartMobile({super.key});
+  final int companyId;
+  final String userId;
+  const RestartMobile({super.key, required this.companyId, required this.userId});
 
   @override
   State<RestartMobile> createState() => _RestartMobileState();
@@ -10,13 +14,148 @@ class RestartMobile extends StatefulWidget {
 
 class _RestartMobileState extends State<RestartMobile> {
   int selectedTab = 0;
-  String? selectedMobile = "01010101010";
   bool isTemporaryStop = true;
   TextEditingController dateController = TextEditingController();
 
-  final List<String> mobiles = ["01010101010", "01010101011", "01010101012"];
-
+  List<Map<String, dynamic>> mobiles = [];
   String? _selectedMobile;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchMobiles();
+  }
+
+  Future<void> fetchMobiles() async {
+    final url = Uri.parse(
+        'http://197.134.252.181/StockGuideAPI/User/UserGetAllByCompanyIdWithStatus?companyId=${widget.companyId}');
+
+    final response = await http.get(url);
+
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+
+      if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+        final List<dynamic> data = decoded['data'];
+
+        setState(() {
+          mobiles = data
+              .where((item) => item['statusId'] == 2 || item['statusId'] == 3)
+              .map<Map<String, dynamic>>((item) {
+            return {
+              'id': item['userId'],
+              'name': item['mobileNO'],
+              'statusId': item['statusId'],
+            };
+          }).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      throw Exception('Failed to fetch branches');
+    }
+  }
+
+  Future<void> showMessageDialog(String message) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+          content: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(fontSize: 16),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'حسناً',
+                style: GoogleFonts.tajawal(
+                  fontSize: 16,
+                  color: Colors.lightBlue,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  Future<void> editUserStatus() async {
+    if (_selectedMobile == null) {
+      await showMessageDialog("برجاء اختيار رقم الهاتف");
+      return;
+    }
+
+    final newStatusId = 1;
+
+    String? toStatusDate;
+    if (isTemporaryStop) {
+      if (dateController.text.isEmpty) {
+        await showMessageDialog('يرجى تحديد التاريخ');
+        return;
+      }
+
+      try {
+        final parts = dateController.text.split('/');
+        final pickedDate = DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+        toStatusDate = pickedDate.toIso8601String();
+      } catch (e) {
+        await showMessageDialog('تاريخ غير صالح');
+        return;
+      }
+    }
+
+    final selectedUser = mobiles.firstWhere(
+          (m) => m["name"] == _selectedMobile,
+      orElse: () => {},
+    );
+
+    print("/*/*");
+    print(selectedUser);
+    final String selectedUserId = selectedUser["id"].toString();
+
+    final body = json.encode({
+      "userId": selectedUserId,        // 👈 required by API
+      "companyId": widget.companyId,   // 👈 required by API
+      "newStatusId": newStatusId,
+      "toStatusDate": toStatusDate ?? "",
+      "fromUserId": widget.userId,     // 👈 logged-in user
+    });
+
+    final response = await http.post(
+      Uri.parse('http://197.134.252.181/StockGuideAPI/User/EditUserStatus'),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      await showMessageDialog('✅ تم تغيير حالة الهاتف بنجاح');
+    } else {
+      await showMessageDialog('❌ فشل في تغيير حالة الهاتف');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +179,7 @@ class _RestartMobileState extends State<RestartMobile> {
                 ),
                 const SizedBox(height: 20),
 
-                // Dropdown for companies
+                // Dropdown for mobiles (users)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
@@ -56,21 +195,18 @@ class _RestartMobileState extends State<RestartMobile> {
                           value: _selectedMobile,
                           icon: const Icon(Icons.arrow_drop_down),
                           isExpanded: true,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
+                          style: const TextStyle(color: Colors.black, fontSize: 16),
                           onChanged: (String? newValue) {
                             setState(() {
                               _selectedMobile = newValue;
                             });
                           },
-                          items: mobiles.map<DropdownMenuItem<String>>((
-                              String value,
-                              ) {
+                          items: mobiles.map<DropdownMenuItem<String>>((mobile) {
+                            final String name = mobile["name"]?.toString() ?? "";
+                            print(name);
                             return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
+                              value: name,
+                              child: Text(name.isNotEmpty ? name : "غير معروف"),
                             );
                           }).toList(),
                         ),
@@ -92,7 +228,7 @@ class _RestartMobileState extends State<RestartMobile> {
                     ],
                   ),
                 ),
-                // Date input (only if temporary stop)
+
                 if (isTemporaryStop)
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -125,21 +261,6 @@ class _RestartMobileState extends State<RestartMobile> {
                               borderRadius: BorderRadius.circular(12),
                               borderSide: const BorderSide(color: Colors.blue),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.blue),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.blue,
-                                width: 2,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
                           ),
                           readOnly: true,
                           onTap: () async {
@@ -170,7 +291,13 @@ class _RestartMobileState extends State<RestartMobile> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Handle stop logic
+                        if (_selectedMobile == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("من فضلك اختر الهاتف")),
+                          );
+                          return;
+                        }
+                        editUserStatus();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.lightBlue,
@@ -189,35 +316,6 @@ class _RestartMobileState extends State<RestartMobile> {
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildTabButton(String title, int index) {
-    final bool isSelected = selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            selectedTab = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: GoogleFonts.tajawal(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.black : Colors.grey,
-              ),
             ),
           ),
         ),

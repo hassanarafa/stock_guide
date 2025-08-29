@@ -1,157 +1,178 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../Renew/presentation/views/RenewBranch.dart';
+
+class Branch {
+  final int branchId;
+  final String branchName;
+  final bool isPaid;
+
+  Branch({
+    required this.branchId,
+    required this.branchName,
+    required this.isPaid,
+  });
+
+  factory Branch.fromJson(Map<String, dynamic> json) {
+    return Branch(
+      branchId: json['branchId'],
+      branchName: json['branchName'],
+      isPaid: json['isPaid'] ?? false,
+    );
+  }
+}
 
 class GetBranches extends StatefulWidget {
-  const GetBranches({super.key});
+  final String userId;
+  final int companyId;
+  const GetBranches({super.key, required this.companyId, required this.userId});
 
   @override
   State<GetBranches> createState() => _GetBranchesState();
 }
 
 class _GetBranchesState extends State<GetBranches> {
-  int selectedTab = 0;
+  List<Branch> branches = [];
+  bool isLoading = true;
 
-  final List<Map<String, dynamic>> subscriptions = [
-    {
-      'branch': 'سموحة',
-      'startDate': '11/11/2024',
-      'endDate': '11/11/2025',
-      'isActive': true,
-    },
-    {
-      'branch': 'ميامي',
-      'startDate': '10/5/2024',
-      'endDate': '30/12/2024',
-      'isActive': false,
-    },
-    {
-      'branch': 'سموحة',
-      'startDate': '11/11/2024',
-      'endDate': '11/11/2025',
-      'isActive': true,
-    },
-    {
-      'branch': 'ميامي',
-      'startDate': '10/5/2024',
-      'endDate': '30/12/2024',
-      'isActive': false,
-    },
-  ];
+  bool showRenewPage = false;
+  int? selectedBranchId;
+
+
+  @override
+  void initState() {
+    super.initState();
+    fetchBranches();
+  }
+
+  Future<void> fetchBranches() async {
+    final url = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/Branch/GetAllBranchesByCompanyIdInRenew?companyId=${widget.companyId}",
+    );
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final List<dynamic> data = body['data'];
+
+        setState(() {
+          branches = data.map((json) => Branch.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to load branches");
+      }
+    } catch (e) {
+      print("Error fetching branches: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> renewBranch(int branchId) async {
+    setState(() {
+      selectedBranchId = branchId;
+      showRenewPage = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("تم الضغط على تجديد للفرع رقم $branchId")),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          backgroundColor: Colors.white,
-        ),
         backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: subscriptions.length,
-                    itemBuilder: (context, index) {
-                      final item = subscriptions[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue),
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Text Info
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['branch'],
-                                    style: GoogleFonts.tajawal(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'بداية الاشتراك: ${item['startDate']}',
-                                    style: GoogleFonts.tajawal(fontSize: 14),
-                                  ),
-                                  Text(
-                                    'نهاية الاشتراك: ${item['endDate']}',
-                                    style: GoogleFonts.tajawal(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(width: 16),
-                              // Space between text and icon
-
-                              // Status Icon
-                              Column(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: item['isActive']
-                                        ? Colors.green
-                                        : Colors.red,
-                                    child: Icon(
-                                      item['isActive']
-                                          ? Icons.check
-                                          : Icons.close,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-
-                                  if (!item['isActive']) ...[
-                                    const SizedBox(height: 12),
-                                    // Space between icon and button
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        // handle renew
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'تجديد',
-                                        style: GoogleFonts.tajawal(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+        body: showRenewPage
+            ? RenewBranch(
+          companyId: widget.companyId,
+          userId: widget.userId, // ⚡ pass the real userId
+        )
+            : SafeArea(
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : branches.isEmpty
+              ? const Center(child: Text("لا توجد فروع"))
+              : Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
+            child: ListView.builder(
+              itemCount: branches.length,
+              itemBuilder: (context, index) {
+                final branch = branches[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue),
                   ),
-                ),
-              ],
+                  child: Row(
+                    mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            branch.branchName,
+                            style: GoogleFonts.tajawal(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: branch.isPaid
+                                ? Colors.green
+                                : Colors.red,
+                            child: Icon(
+                              branch.isPaid
+                                  ? Icons.check
+                                  : Icons.close,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () =>
+                                renewBranch(branch.branchId),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              "تجديد",
+                              style: GoogleFonts.tajawal(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),

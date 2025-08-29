@@ -1,22 +1,153 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+
+class Company {
+  final int id;
+  final String name;
+  final int statusId;
+  final String statusName;
+
+  Company({
+    required this.id,
+    required this.name,
+    required this.statusId,
+    required this.statusName,
+  });
+
+  factory Company.fromJson(Map<String, dynamic> json) {
+    return Company(
+      id: json['companyId'],
+      name: json['companyName'],
+      statusId: json['statusId'],
+      statusName: json['statusName'],
+    );
+  }
+}
 
 class RestartCompany extends StatefulWidget {
-  const RestartCompany({super.key});
+  final String userId;
+
+  const RestartCompany({super.key, required this.userId});
 
   @override
   State<RestartCompany> createState() => _RestartCompanyState();
 }
 
 class _RestartCompanyState extends State<RestartCompany> {
-  int selectedTab = 0;
-  String? selectedCompany = "Bino Kids";
-  bool isTemporaryStop = true;
+  bool isTemporaryRestart = true;
   TextEditingController dateController = TextEditingController();
 
-  final List<String> companies = ["Bino Kids", "شركة أخرى", "شركة 3"];
+  List<Company> companies = [];
+  Company? _selectedCompany;
 
-  String? _selectedCompany;
+  @override
+  void initState() {
+    super.initState();
+    fetchCompanies();
+  }
+
+  Future<void> fetchCompanies() async {
+    final url = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}",
+    );
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final List<dynamic> data = body['data'];
+        print("/*/*");
+        print(data);
+
+        setState(() {
+          companies = data
+              .map((json) => Company.fromJson(json))
+              .where(
+                (company) => company.statusId == 2 || company.statusId == 3,
+              )
+              .toList();
+        });
+      }
+    } catch (e) {
+      print("Error fetching companies: $e");
+    }
+  }
+
+  Future<void> submitCompanyStatus() async {
+    if (_selectedCompany == null) {
+      await showMessageDialog("برجاء اختيار شركة");
+      return;
+    }
+
+    final companyId = _selectedCompany!.id;
+    final statusId = 1;
+
+    String? toStatusDate;
+    if (isTemporaryRestart) {
+      if (dateController.text.isEmpty) {
+        await showMessageDialog('يرجى تحديد التاريخ');
+        return;
+      }
+      try {
+        final parts = dateController.text.split('/');
+        final pickedDate = DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+        toStatusDate = pickedDate.toIso8601String();
+      } catch (e) {
+        await showMessageDialog('تاريخ غير صالح');
+        return;
+      }
+    }
+
+    final body = json.encode({
+      'companyId': companyId,
+      'statusId': statusId,
+      'toStatusDate': toStatusDate ?? '',
+    });
+
+    final response = await http.post(
+      Uri.parse('http://197.134.252.181/StockGuideAPI/Company/EditStatus'),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        final index = companies.indexWhere((c) => c.id == companyId);
+        if (index != -1) {
+          companies[index] = Company(
+            id: companies[index].id,
+            name: companies[index].name,
+            statusId: statusId,
+            statusName: "نشط",
+          );
+        }
+      });
+      await showMessageDialog('✅ تم اعادة تشغيل الشركة بنجاح');
+    } else {
+      await showMessageDialog('❌ فشل في اعادة تشغيل الشركة');
+    }
+  }
+
+  Future<void> showMessageDialog(String message) async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        content: Text(message, style: GoogleFonts.tajawal()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("حسناً"),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +162,7 @@ class _RestartCompanyState extends State<RestartCompany> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'اعادة تشغيل شركة',
+                  'إعادة تشغيل شركة',
                   style: GoogleFonts.tajawal(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -51,26 +182,21 @@ class _RestartCompanyState extends State<RestartCompany> {
                     child: DropdownButtonHideUnderline(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: DropdownButton<String>(
+                        child: DropdownButton<int>(
+                          value: _selectedCompany?.id,
                           hint: const Text('اختر الشركة'),
-                          value: _selectedCompany,
-                          icon: const Icon(Icons.arrow_drop_down),
                           isExpanded: true,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
-                          onChanged: (String? newValue) {
+                          onChanged: (int? newId) {
                             setState(() {
-                              _selectedCompany = newValue;
+                              _selectedCompany = companies.firstWhere(
+                                (c) => c.id == newId,
+                              );
                             });
                           },
-                          items: companies.map<DropdownMenuItem<String>>((
-                              String value,
-                              ) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
+                          items: companies.map((company) {
+                            return DropdownMenuItem<int>(
+                              value: company.id,
+                              child: Text(company.name),
                             );
                           }).toList(),
                         ),
@@ -80,20 +206,22 @@ class _RestartCompanyState extends State<RestartCompany> {
                 ),
 
                 const SizedBox(height: 20),
-                // Stop type toggle buttons
+
+                // Restart type toggle buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      buildToggleButton("اعادة تشغيل دائم", false),
+                      buildToggleButton("تشغيل دائم", false),
                       const SizedBox(width: 10),
-                      buildToggleButton("اعادة تشغيل مؤقت", true),
+                      buildToggleButton("تشغيل مؤقت", true),
                     ],
                   ),
                 ),
-                // Date input (only if temporary stop)
-                if (isTemporaryStop)
+
+                // Date input (only if temporary restart)
+                if (isTemporaryRestart)
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -115,7 +243,7 @@ class _RestartCompanyState extends State<RestartCompany> {
                               color: Colors.grey[600],
                               fontSize: 16,
                             ),
-                            prefixIcon: Icon(
+                            prefixIcon: const Icon(
                               Icons.calendar_today,
                               color: Colors.lightBlue,
                             ),
@@ -152,7 +280,7 @@ class _RestartCompanyState extends State<RestartCompany> {
                             if (picked != null) {
                               setState(() {
                                 dateController.text =
-                                "${picked.day}/${picked.month}/${picked.year}";
+                                    "${picked.day}/${picked.month}/${picked.year}";
                               });
                             }
                           },
@@ -169,9 +297,7 @@ class _RestartCompanyState extends State<RestartCompany> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Handle stop logic
-                      },
+                      onPressed: submitCompanyStatus,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.lightBlue,
                         shape: RoundedRectangleBorder(
@@ -179,7 +305,7 @@ class _RestartCompanyState extends State<RestartCompany> {
                         ),
                       ),
                       child: Text(
-                        'اعادة تشغيل',
+                        'إعادة تشغيل',
                         style: GoogleFonts.tajawal(
                           color: Colors.white,
                           fontSize: 18,
@@ -196,47 +322,18 @@ class _RestartCompanyState extends State<RestartCompany> {
     );
   }
 
-  Widget buildTabButton(String title, int index) {
-    final bool isSelected = selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            selectedTab = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: GoogleFonts.tajawal(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.black : Colors.grey,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget buildToggleButton(String title, bool value) {
-    final bool isSelected = isTemporaryStop == value;
+    final bool isSelected = isTemporaryRestart == value;
     return Expanded(
       child: ElevatedButton(
         onPressed: () {
           setState(() {
-            isTemporaryStop = value;
+            isTemporaryRestart = value;
           });
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: isSelected ? Colors.lightBlue : Colors.white,
-          side: BorderSide(color: Colors.lightBlue),
+          side: const BorderSide(color: Colors.lightBlue),
           foregroundColor: isSelected ? Colors.white : Colors.lightBlue,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -244,7 +341,7 @@ class _RestartCompanyState extends State<RestartCompany> {
         ),
         child: Text(
           title,
-          style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
+          style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 12),
         ),
       ),
     );

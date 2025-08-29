@@ -1,32 +1,60 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../../constants.dart';
 import 'GetBranches.dart';
 import 'GetMobiles.dart';
 
+class Company {
+  final int id;
+  final String name;
+  final int statusId;
+  final String statusName;
+
+  Company({
+    required this.id,
+    required this.name,
+    required this.statusId,
+    required this.statusName,
+  });
+
+  factory Company.fromJson(Map<String, dynamic> json) {
+    return Company(
+      id: json['companyId'],
+      name: json['companyName'],
+      statusId: json['statusId'],
+      statusName: json['statusName'],
+    );
+  }
+}
+
 class InquiryMainLayout extends StatefulWidget {
-  const InquiryMainLayout({super.key});
+  final String userId;
+  final int companyId;
+
+  const InquiryMainLayout({
+    super.key,
+    required this.userId,
+    required this.companyId,
+  });
 
   @override
   State<InquiryMainLayout> createState() => _InquiryMainLayoutState();
 }
 
-class _InquiryMainLayoutState extends State<InquiryMainLayout> with SingleTickerProviderStateMixin{
-  final List<String> _branchOptions = [
-    'فرع القاهرة',
-    'فرع الإسكندرية',
-    'فرع الجيزة',
-  ];
-  String? _selectedBranch;
-
-  bool _showBranches = false;
+class _InquiryMainLayoutState extends State<InquiryMainLayout>
+    with SingleTickerProviderStateMixin {
+  List<Company> companies = [];
 
   late TabController _tabController;
 
   @override
   void initState() {
     _tabController = TabController(length: 2, vsync: this);
+    fetchCompanies();
     super.initState();
   }
 
@@ -35,145 +63,85 @@ class _InquiryMainLayoutState extends State<InquiryMainLayout> with SingleTicker
     _tabController.dispose();
     super.dispose();
   }
+
+  Future<void> fetchCompanies() async {
+    final url = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}",
+    );
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final List<dynamic> data = body['data'];
+
+        setState(() {
+          companies = data
+              .map((json) => Company.fromJson(json))
+              .where((company) => company.statusId == 1)
+              .toList();
+        });
+      }
+    } catch (e) {
+      print("Error fetching companies: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(automaticallyImplyLeading: false, elevation: 0, backgroundColor: Colors.white),
-      body: Container(
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: _showBranches
-              ? _buildBranchesView() // Show branches view
-              : _buildSelectionView(), // Show initial selection form
-        ),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        backgroundColor: Colors.white,
       ),
-    );
-  }
-
-  Widget _buildSelectionView() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      body: Column(
         children: [
-          Text(
-            "اختر شركة",
-            style: GoogleFonts.tajawal(
-              textStyle: const TextStyle(
-                color: primaryTextColor,
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: 60,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.blue, width: 1.5),
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFFFFFFF),
+              borderRadius: BorderRadius.circular(30),
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                hint: const Text('اختر الشركة'),
-                value: _selectedBranch,
-                icon: const Icon(Icons.arrow_drop_down),
-                isExpanded: true,
-                style: const TextStyle(color: Colors.black, fontSize: 16),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedBranch = newValue;
-                  });
-                },
-                items: _branchOptions
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: TabBar(
+                controller: _tabController,
+                dividerColor: Colors.white,
+                indicator: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.grey[600],
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                indicatorPadding: const EdgeInsets.all(2),
+                indicatorSize: TabBarIndicatorSize.tab,
+                tabs: const [
+                  Tab(child: Text("الفروع")),
+                  Tab(child: Text("الموبايل")),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _showBranches = true;
-                });
-              },
-              child: Text(
-                'بحث',
-                style: GoogleFonts.tajawal(
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                GetBranches(companyId: widget.companyId, userId: widget.userId),
+                GetMobiles(companyId: widget.companyId),
+              ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBranchesView() {
-    return Column(
-      children: [
-        // Add TabBar here
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: TabBar(
-            controller: _tabController,
-            dividerColor: Colors.white,
-            indicator: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  spreadRadius: 1,
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            labelColor: Colors.black,
-            unselectedLabelColor: Colors.grey[600],
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-            indicatorPadding: const EdgeInsets.all(2),
-            indicatorSize: TabBarIndicatorSize.tab,
-            tabs: const [
-              Tab(child: Text("الفروع")),
-              Tab(child: Text("الموبايل")),
-            ],
-          ),
-        ),
-
-        // Show content below
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              GetBranches(),
-              GetMobiles(),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,26 +1,215 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../../constants.dart';
 
+class FeeOption {
+  final int id;
+  final int months;
+  final double price;
+
+  FeeOption({required this.id, required this.months, required this.price});
+
+  factory FeeOption.fromJson(Map<String, dynamic> json) {
+    return FeeOption(
+      id: json['id'],
+      months: json['noMonths'],
+      price: (json['fees'] as num).toDouble(),
+    );
+  }
+}
+
+class MobileUser {
+  final String userId;
+  final String name;
+  final String mobileNo;
+
+  MobileUser({
+    required this.userId,
+    required this.name,
+    required this.mobileNo,
+  });
+
+  factory MobileUser.fromJson(Map<String, dynamic> json) {
+    return MobileUser(
+      userId: json['subscriptionId'].toString(),
+      name: json['displayName'] ?? '',
+      mobileNo: json['mobile'] ?? '',
+    );
+  }
+}
+
 class RenewMobile extends StatefulWidget {
-  const RenewMobile({super.key});
+  final int companyId;
+  final String userId;
+
+  const RenewMobile({super.key, required this.companyId, required this.userId});
 
   @override
   State<RenewMobile> createState() => _RenewMobileState();
 }
 
 class _RenewMobileState extends State<RenewMobile> {
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController nameController = TextEditingController();
+  List<MobileUser> mobiles = [];
+  MobileUser? _selectedMobile;
 
-  final List<String> _mobileOptions = ["01010101010", "01010101011", "01010101012"];
-  String? _selectedBranch;
+  List<FeeOption> feeOptions = [];
+  FeeOption? _selectedFee;
 
-  String _branchType = '01010101010';
+  bool isLoadingMobiles = true;
+  bool isLoadingFees = true;
 
-  bool _agreeToTerms = false;
-  bool _agreeToPrivacy = false;
+  Future<void> showMessageDialog(String message) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.all(16),
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.tajawal(fontSize: 16),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'حسناً',
+              style: GoogleFonts.tajawal(fontSize: 16, color: Colors.lightBlue),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchMobiles();
+    fetchFeeOptions();
+  }
+
+  Future<void> fetchMobiles() async {
+    try {
+      final url = Uri.parse(
+          "http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=${widget.companyId}");
+      final response = await http.get(url);
+
+      print(response.body);
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> data = decoded['data'] ?? [];
+
+        print(data.map((e) => MobileUser.fromJson(e)).toList());
+        if (mounted) {
+          setState(() {
+            mobiles = data.map((e) => MobileUser.fromJson(e)).toList();
+            isLoadingMobiles = false;
+          });
+        }
+      } else {
+        throw Exception("فشل تحميل أرقام الموبايل");
+      }
+    } catch (e) {
+      setState(() => isLoadingMobiles = false);
+      showMessageDialog("خطأ في تحميل الموبايلات: $e");
+    }
+  }
+
+  Future<void> fetchFeeOptions() async {
+    try {
+      final url = Uri.parse(
+          "http://197.134.252.181/StockGuideAPI/User/GetSettingOfUserFeesInFirstTime");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded['data'] as List;
+        final options = data.map((e) => FeeOption.fromJson(e)).toList();
+
+        setState(() {
+          feeOptions = options;
+          _selectedFee = options.isNotEmpty ? options.first : null;
+          isLoadingFees = false;
+        });
+      } else {
+        throw Exception("فشل تحميل الاشتراكات");
+      }
+    } catch (e) {
+      setState(() => isLoadingFees = false);
+      showMessageDialog("خطأ في تحميل الاشتراكات: $e");
+    }
+  }
+
+  /// 🔹 Upload receipt
+  Future<void> _uploadReceipt() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result == null) {
+      showMessageDialog("لم يتم اختيار ملف 📄");
+      return;
+    }
+
+    File file = File(result.files.single.path!);
+    var uri = Uri.parse(
+        "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionFile");
+
+    var request = http.MultipartRequest("POST", uri);
+    request.fields['SubscriptionUserId'] = widget.userId;
+    request.files.add(await http.MultipartFile.fromPath('File', file.path));
+
+    var response = await request.send();
+
+    if (response.statusCode == 200) {
+      showMessageDialog("تم رفع الإيصال بنجاح ✅");
+    } else {
+      showMessageDialog("فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
+    }
+  }
+
+  Future<void> renewUser() async {
+    if (_selectedMobile == null || _selectedFee == null) {
+      showMessageDialog("يرجى اختيار الموبايل والباقات أولاً ⚠️");
+      return;
+    }
+
+    final url = Uri.parse("http://197.134.252.181/StockGuideAPI/User/UpdateUser");
+
+    final body = {
+      "companyId": widget.companyId,
+      "userId": _selectedMobile!.userId,
+      "updatedByUserId": widget.userId,
+      "userName": _selectedMobile!.name,
+      "mobileNo": _selectedMobile!.mobileNo,
+      "noMonth": _selectedFee!.months,
+      "fees": _selectedFee!.price,
+    };
+
+    print(body);
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200) {
+        showMessageDialog("تم تجديد الاشتراك بنجاح ✅");
+      } else {
+        showMessageDialog("فشل التجديد ❌ (كود: ${response.statusCode})");
+      }
+    } catch (e) {
+      showMessageDialog("خطأ في الاتصال بالسيرفر ❌: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +217,8 @@ class _RenewMobileState extends State<RenewMobile> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 'تجديد موبايل',
@@ -41,29 +229,28 @@ class _RenewMobileState extends State<RenewMobile> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Dropdown
+
+              /// Mobile dropdown
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.blue, width: 1.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                child: isLoadingMobiles
+                    ? const Center(child: CircularProgressIndicator())
+                    : DropdownButtonHideUnderline(
+                  child: DropdownButton<MobileUser>(
                     hint: const Text('اختر الموبايل'),
-                    value: _selectedBranch,
-                    icon: const Icon(Icons.arrow_drop_down),
+                    value: _selectedMobile,
                     isExpanded: true,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedBranch = newValue;
-                      });
+                    onChanged: (value) {
+                      setState(() => _selectedMobile = value);
                     },
-                    items: _mobileOptions.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
+                    items: mobiles.map((mobile) {
+                      return DropdownMenuItem(
+                        value: mobile,
+                        child: Text(mobile.name),
                       );
                     }).toList(),
                   ),
@@ -72,53 +259,58 @@ class _RenewMobileState extends State<RenewMobile> {
 
               const SizedBox(height: 16),
 
-              // Duration options
-              Row(
+              /// Fee options
+              isLoadingFees
+                  ? const Center(child: CircularProgressIndicator())
+                  : Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  {'label': '3 شهور', 'price': '(200 جم)'},
-                  {'label': '6 شهور', 'price': '(350 جم)'},
-                  {'label': '12 شهر', 'price': '(600 جم)'},
-                ].map((option) {
-                  final isSelected = _branchType == option['label'];
+                children: feeOptions.map((option) {
+                  final isSelected = _selectedFee?.id == option.id;
                   return Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _branchType = option['label']!;
-                        });
-                      },
+                      onTap: () =>
+                          setState(() => _selectedFee = option),
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        margin:
+                        const EdgeInsets.symmetric(horizontal: 4),
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue.shade50 : Colors.white,
+                          color: isSelected
+                              ? Colors.blue.shade50
+                              : Colors.white,
                           border: Border.all(
-                            color: isSelected ? Colors.blue : Colors.grey.shade400,
+                            color: isSelected
+                                ? Colors.blue
+                                : Colors.grey.shade400,
                             width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                option['label']!,
-                                style: GoogleFonts.tajawal(
-                                  fontSize: 16,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? Colors.blue : Colors.black,
-                                ),
+                        child: Column(
+                          children: [
+                            Text(
+                              "${option.months} شهور",
+                              style: GoogleFonts.tajawal(
+                                fontSize: 16,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isSelected
+                                    ? Colors.blue
+                                    : Colors.black,
                               ),
-                              Text(
-                                option['price']!,
-                                style: GoogleFonts.tajawal(
-                                  fontSize: 14,
-                                  color: isSelected ? Colors.blue : Colors.black,
-                                ),
+                            ),
+                            Text(
+                              "(${option.price.toStringAsFixed(0)} جم)",
+                              style: GoogleFonts.tajawal(
+                                fontSize: 14,
+                                color: isSelected
+                                    ? Colors.blue
+                                    : Colors.black,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -126,98 +318,31 @@ class _RenewMobileState extends State<RenewMobile> {
                 }).toList(),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 20),
 
-              // Checkboxes
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade200),
-                        color: Colors.blue.shade50.withOpacity(0.3),
-                      ),
-                      child: CheckboxListTile(
-                        value: _agreeToTerms,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            _agreeToTerms = value ?? false;
-                          });
-                        },
-                        checkboxShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        activeColor: Colors.blue,
-                        title: Text(
-                          'يسمح له بانشاء فرع',
-                          style: GoogleFonts.tajawal(fontSize: 18),
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade200),
-                        color: Colors.blue.shade50.withOpacity(0.3),
-                      ),
-                      child: CheckboxListTile(
-                        value: _agreeToPrivacy,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            _agreeToPrivacy = value ?? false;
-                          });
-                        },
-                        checkboxShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        activeColor: Colors.blue,
-                        title: Text(
-                          'يسمح له بانشاء موبايل',
-                          style: GoogleFonts.tajawal(fontSize: 18),
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Total
+              /// Total
               Text(
-                "الاجمالي: 400 ج.م",
+                _selectedFee == null
+                    ? "الاجمالي: -"
+                    : "الاجمالي: ${_selectedFee!.price.toStringAsFixed(0)} ج.م",
                 style: GoogleFonts.tajawal(
-                  textStyle: const TextStyle(
-                    color: primaryTextColor,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: primaryTextColor,
                 ),
-                textAlign: TextAlign.center,
               ),
 
               const SizedBox(height: 20),
 
-              // Buttons
+              /// Buttons
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: (_agreeToTerms || _agreeToPrivacy)
-                          ? () {
-                        // Save logic
-                      }
-                          : null,
+                      onPressed: renewUser,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.only(top: 20, bottom: 15),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -235,12 +360,10 @@ class _RenewMobileState extends State<RenewMobile> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Upload receipt logic
-                      },
+                      onPressed: _uploadReceipt,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(vertical: 17.5),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -257,9 +380,6 @@ class _RenewMobileState extends State<RenewMobile> {
                   ),
                 ],
               ),
-
-              const SizedBox(height: 30),
-
             ],
           ),
         ),

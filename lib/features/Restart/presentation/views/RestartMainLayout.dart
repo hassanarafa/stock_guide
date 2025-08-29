@@ -5,7 +5,9 @@ import 'RestartCompany.dart';
 import 'RestartMobile.dart';
 
 class RestartMainLayout extends StatefulWidget {
-  const RestartMainLayout({super.key});
+  final String userId;
+  final int companyId;
+  const RestartMainLayout({super.key,required this.userId,required this.companyId});
 
   @override
   State<RestartMainLayout> createState() => _RestartMainLayoutState();
@@ -72,14 +74,14 @@ class _RestartMainLayoutState extends State<RestartMainLayout>
                       Tab(
                         child: Text(
                           "اعادة تشغيل شركة",
-                          style: TextStyle(fontSize: 13),
+                          style: TextStyle(fontSize: 12),
                         ),
                       ),
-                      Tab(child: Text("اعادة تشغيل فرع")),
+                      Tab(child: Text("اعادة تشغيل فرع",style: TextStyle(fontSize: 12),)),
                       Tab(
                         child: Text(
                           "اعادة تشغيل موبايل",
-                          style: TextStyle(fontSize: 13),
+                          style: TextStyle(fontSize: 11),
                         ),
                       ),
                     ],
@@ -91,9 +93,9 @@ class _RestartMainLayoutState extends State<RestartMainLayout>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    RestartCompany(),
-                    RestartBranch(),
-                    RestartMobile()
+                    RestartCompany(userId: widget.userId),
+                    RestartBranch(userId: widget.userId, companyId: widget.companyId),
+                    RestartMobile(companyId: widget.companyId, userId: widget.userId,)
                   ],
                 ),
               ),

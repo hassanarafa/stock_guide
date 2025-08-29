@@ -4,7 +4,14 @@ import 'RenewBranch.dart';
 import 'RenewNobile.dart';
 
 class RenewMainLayout extends StatefulWidget {
-  const RenewMainLayout({super.key});
+  final int companyId;
+  final String userId;
+
+  const RenewMainLayout({
+    super.key,
+    required this.companyId,
+    required this.userId,
+  });
 
   @override
   State<RenewMainLayout> createState() => _RenewMainLayoutState();
@@ -47,8 +54,7 @@ class _RenewMainLayoutState extends State<RenewMainLayout>
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
-                  child:
-                  TabBar(
+                  child: TabBar(
                     controller: _tabController,
                     dividerColor: Colors.white,
                     indicator: BoxDecoration(
@@ -79,7 +85,16 @@ class _RenewMainLayoutState extends State<RenewMainLayout>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: const [RenewBranch(), RenewMobile()],
+                  children: [
+                    RenewBranch(
+                      companyId: widget.companyId,
+                      userId: widget.userId,
+                    ),
+                    RenewMobile(
+                      userId: widget.userId,
+                      companyId: widget.companyId,
+                    ),
+                  ],
                 ),
               ),
             ],

@@ -1,157 +1,159 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+
+class UserModel {
+  final String userId;
+  final String mobile;
+  final String name;
+  final bool isPaid;
+
+  UserModel({
+    required this.userId,
+    required this.mobile,
+    required this.name,
+    required this.isPaid,
+  });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      userId: json['userId'],
+      mobile: json['mobile'] ?? "",
+      name: json['displayName'] ?? "",
+      isPaid: json['isActive'] ?? false,
+    );
+  }
+}
+
 
 class GetMobiles extends StatefulWidget {
-  const GetMobiles({super.key});
+  final int companyId;
+  const GetMobiles({super.key, required this.companyId});
 
   @override
   State<GetMobiles> createState() => _GetMobilesState();
 }
 
 class _GetMobilesState extends State<GetMobiles> {
-  int selectedTab = 0;
+  List<UserModel> users = [];
+  bool isLoading = true;
 
-  final List<Map<String, dynamic>> subscriptions = [
-    {
-      'branch': '01010101010',
-      'startDate': '11/11/2024',
-      'endDate': '11/11/2025',
-      'isActive': true,
-    },
-    {
-      'branch': '01010101011',
-      'startDate': '10/5/2024',
-      'endDate': '30/12/2024',
-      'isActive': false,
-    },
-    {
-      'branch': '01010101013',
-      'startDate': '11/11/2024',
-      'endDate': '11/11/2025',
-      'isActive': true,
-    },
-    {
-      'branch': '01010101014',
-      'startDate': '10/5/2024',
-      'endDate': '30/12/2024',
-      'isActive': false,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    fetchUsers();
+  }
+
+  Future<void> fetchUsers() async {
+    final url = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=${widget.companyId}",
+    );
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final List<dynamic> data = body['data'];
+
+        setState(() {
+          users = data.map((json) => UserModel.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to load users");
+      }
+    } catch (e) {
+      print("Error fetching users: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          automaticallyImplyLeading: false,
-        ),
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: Padding(
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : users.isEmpty
+              ? const Center(child: Text("لا يوجد مستخدمون"))
+              : Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: subscriptions.length,
-                    itemBuilder: (context, index) {
-                      final item = subscriptions[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue),
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Text Info
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['branch'],
-                                    style: GoogleFonts.tajawal(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'بداية الاشتراك: ${item['startDate']}',
-                                    style: GoogleFonts.tajawal(fontSize: 14),
-                                  ),
-                                  Text(
-                                    'نهاية الاشتراك: ${item['endDate']}',
-                                    style: GoogleFonts.tajawal(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(width: 16),
-                              // Space between text and icon
-
-                              // Status Icon
-                              Column(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: item['isActive']
-                                        ? Colors.green
-                                        : Colors.red,
-                                    child: Icon(
-                                      item['isActive']
-                                          ? Icons.check
-                                          : Icons.close,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-
-                                  if (!item['isActive']) ...[
-                                    const SizedBox(height: 12),
-                                    // Space between icon and button
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        // handle renew
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'تجديد',
-                                        style: GoogleFonts.tajawal(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+            child: ListView.builder(
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue),
                   ),
-                ),
-              ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Mobile & Dates
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.name,
+                            style: GoogleFonts.tajawal(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor:
+                            user.isPaid ? Colors.green : Colors.red,
+                            child: Icon(
+                              user.isPaid ? Icons.check : Icons.close,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          if (!user.isPaid) ...[
+                            const SizedBox(width: 10),
+                            ElevatedButton(
+                              onPressed: () {
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              child: Text(
+                                'تجديد',
+                                style: GoogleFonts.tajawal(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
