@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 import '../widgets/CustomBottomNavBar.dart';
 
 class MainLayout extends StatefulWidget {
-  const MainLayout({super.key});
+  final int companyId;
+  final String companyName;
+  final String userId;
+
+  const MainLayout({
+    super.key,
+    required this.companyId,
+    required this.companyName,
+    required this.userId,
+  });
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
@@ -35,8 +44,15 @@ class _MainLayoutState extends State<MainLayout>
           elevation: 0,
           backgroundColor: Colors.white,
         ),
-        body: Column(children: []),
-        bottomNavigationBar: const CustomBottomNavBar(),
+        body: Container(
+          color: Colors.white,
+          child: Column(children: const []),
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          userId: widget.userId,
+          companyId: widget.companyId,
+          companyName: widget.companyName,
+        ),
       ),
     );
   }

@@ -5,7 +5,16 @@ import 'StopCompany.dart';
 import 'StopMobile.dart';
 
 class StopMainLayout extends StatefulWidget {
-  const StopMainLayout({super.key});
+  final String userId;
+  final int companyId;
+  final String companyName;
+
+  const StopMainLayout({
+    super.key,
+    required this.userId,
+    required this.companyId,
+    required this.companyName,
+  });
 
   @override
   State<StopMainLayout> createState() => _StopMainLayoutState();
@@ -32,10 +41,7 @@ class _StopMainLayoutState extends State<StopMainLayout>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-        ),
+        appBar: AppBar(elevation: 0, backgroundColor: Colors.white),
         body: Container(
           color: Colors.white,
           child: Column(
@@ -83,10 +89,19 @@ class _StopMainLayoutState extends State<StopMainLayout>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: const [
-                    StopCompany(),
-                    StopBranch(),
-                    StopMobile(),
+                  children: [
+                    StopCompany(
+                      userId: widget.userId,
+                      companyName: widget.companyName,
+                    ),
+                    StopBranch(
+                      userId: widget.userId,
+                      companyId: widget.companyId,
+                    ),
+                    StopMobile(
+                      userId: widget.userId,
+                      companyId: widget.companyId,
+                    ),
                   ],
                 ),
               ),

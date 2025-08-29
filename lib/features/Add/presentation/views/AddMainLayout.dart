@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
 import 'AddBranch.dart';
-import 'AddCompany.dart';
 import 'AddMobile.dart';
 
 class AddMainLayout extends StatefulWidget {
-  const AddMainLayout({super.key});
+  final int companyId;
+  final String companyName;
+
+  const AddMainLayout({
+    super.key,
+    required this.companyId,
+    required this.companyName,
+  });
 
   @override
   State<AddMainLayout> createState() => _AddMainLayoutState();
@@ -32,10 +38,7 @@ class _AddMainLayoutState extends State<AddMainLayout>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-        ),
+        appBar: AppBar(elevation: 0, backgroundColor: Colors.white),
         body: Container(
           color: Colors.white,
           child: Column(
@@ -72,7 +75,6 @@ class _AddMainLayoutState extends State<AddMainLayout>
                     indicatorPadding: const EdgeInsets.all(2),
                     indicatorSize: TabBarIndicatorSize.tab,
                     tabs: const [
-                      Tab(child: Text("اضافة شركة")),
                       Tab(child: Text("اضافة فرع")),
                       Tab(child: Text("اضافة موبايل")),
                     ],
@@ -83,10 +85,15 @@ class _AddMainLayoutState extends State<AddMainLayout>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: const [
-                    AddCompany(),
-                    AddBranch(),
-                    AddMobile(),
+                  children: [
+                    AddBranch(
+                      companyId: widget.companyId,
+                      companyName: widget.companyName,
+                    ),
+                    AddMobile(
+                      companyName: widget.companyName,
+                      companyId: widget.companyId,
+                    ),
                   ],
                 ),
               ),

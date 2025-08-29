@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:stock_guide/features/Add/presentation/views/AddMainLayout.dart';
+
 import '../../../Injuiry/presentation/viewa/InquiryMainLayout.dart';
 import '../../../Renew/presentation/views/RenewMainLayout.dart';
 import '../../../Restart/presentation/views/RestartMainLayout.dart';
 import '../../../Stop/presentation/views/StopMainLayout.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
-  const CustomBottomNavBar({super.key});
+  final int companyId;
+  final String companyName;
+  final String userId;
+
+  const CustomBottomNavBar({
+    super.key,
+    required this.companyId,
+    required this.companyName,
+    required this.userId,
+  });
 
   @override
   State<CustomBottomNavBar> createState() => _CustomBottomNavBarState();
@@ -14,14 +24,22 @@ class CustomBottomNavBar extends StatefulWidget {
 
 class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   int _currentIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = const [
-    AddMainLayout(),
-    StopMainLayout(),
-    RestartMainLayout(),
-    RenewMainLayout(),
-    InquiryMainLayout()
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      AddMainLayout(
+        companyId: widget.companyId,
+        companyName: widget.companyName,
+      ),
+      StopMainLayout(userId: widget.userId,companyId: widget.companyId,companyName: widget.companyName),
+      RestartMainLayout(userId: widget.userId,companyId: widget.companyId),
+      RenewMainLayout(companyId: widget.companyId,userId: widget.userId),
+      InquiryMainLayout(userId: widget.userId,companyId: widget.companyId),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../constants.dart';
-import '../../../CompanyPages/presentation/views/MainLayout.dart';
+import '../../../Add/presentation/views/AddCompany.dart';
+import '../../../login/presentation/views/loginView.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
@@ -10,6 +11,28 @@ class HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text(
+          'الشركات',
+          style: GoogleFonts.tajawal(fontSize: 20, color: Colors.black),
+        ),
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.red),
+            tooltip: 'تسجيل الخروج',
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => LoginView()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
+      ),
+
       body: Container(
         color: Colors.white,
         child: Center(
@@ -53,7 +76,7 @@ class HomeView extends StatelessWidget {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => MainLayout()),
+                        MaterialPageRoute(builder: (context) => AddCompany()),
                       );
                     },
                     child: Text(

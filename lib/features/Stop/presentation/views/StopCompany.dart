@@ -1,8 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 class StopCompany extends StatefulWidget {
-  const StopCompany({super.key});
+  final String userId;
+  final String companyName;
+
+  const StopCompany({super.key, required this.userId, required this.companyName});
 
   @override
   State<StopCompany> createState() => _StopCompanyState();
@@ -10,13 +15,159 @@ class StopCompany extends StatefulWidget {
 
 class _StopCompanyState extends State<StopCompany> {
   int selectedTab = 0;
-  String? selectedCompany = "Bino Kids";
   bool isTemporaryStop = true;
   TextEditingController dateController = TextEditingController();
 
-  final List<String> companies = ["Bino Kids", "شركة أخرى", "شركة 3"];
-
+  List<Map<String, dynamic>> companies = [];
   String? _selectedCompany;
+  bool isLoading = true;
+  int? currentStatusId;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCompanies();
+  }
+
+  Future<void> fetchCompanies() async {
+    final response = await http.get(
+      Uri.parse(
+        'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+
+      if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+        final List<dynamic> data = decoded['data'];
+
+        setState(() {
+          companies = data
+              .where((item) => item['statusId'] == 1)
+              .map<Map<String, dynamic>>((item) {
+            return {
+              'id': item['companyId'],
+              'name': item['companyName'],
+              'statusId': item['statusId'],
+            };
+          }).toList();
+
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Unexpected JSON format");
+      }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      throw Exception('Failed to load companies');
+    }
+  }
+
+  String getStatusLabel(int? statusId) {
+    switch (statusId) {
+      case 1:
+        return 'نشطة';
+      case 3:
+        return 'إيقاف مؤقت';
+      case 2:
+        return 'إيقاف دائم';
+      default:
+        return 'غير معروف';
+    }
+  }
+
+  Future<void> showMessageDialog(String message) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+          content: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(fontSize: 16),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'حسناً',
+                style: GoogleFonts.tajawal(
+                  fontSize: 16,
+                  color: Colors.lightBlue,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> submitCompanyStatus() async {
+    if (_selectedCompany == null) {
+      await showMessageDialog("برجاء ادخال شركة");
+      return;
+    }
+
+    final selected = companies.firstWhere((c) => c['name'] == _selectedCompany);
+    final companyId = selected['id'];
+    final statusId = isTemporaryStop ? 3 : 2;
+
+    String? toStatusDate;
+    if (isTemporaryStop) {
+      if (dateController.text.isEmpty) {
+        await showMessageDialog('يرجى تحديد التاريخ');
+        return;
+      }
+
+      try {
+        final parts = dateController.text.split('/');
+        final pickedDate = DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+        toStatusDate = pickedDate.toIso8601String();
+      } catch (e) {
+        await showMessageDialog('تاريخ غير صالح');
+        return;
+      }
+    }
+
+    final body = json.encode({
+      'companyId': companyId,
+      'statusId': statusId,
+      'toStatusDate': toStatusDate ?? '',
+    });
+
+    final response = await http.post(
+      Uri.parse('http://197.134.252.181/StockGuideAPI/Company/EditStatus'),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        currentStatusId = statusId;
+        final index = companies.indexWhere((c) => c['id'] == companyId);
+        if (index != -1) {
+          companies[index]['statusId'] = statusId;
+        }
+      });
+
+      await showMessageDialog('✅ تم تغيير حالة الشركة بنجاح');
+    } else {
+      await showMessageDialog('❌ فشل في تغيير حالة الشركة');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,47 +191,32 @@ class _StopCompanyState extends State<StopCompany> {
                 ),
                 const SizedBox(height: 20),
 
-                // Dropdown for companies
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue, width: 1.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: DropdownButton<String>(
-                          hint: const Text('اختر الشركة'),
-                          value: _selectedCompany,
-                          icon: const Icon(Icons.arrow_drop_down),
-                          isExpanded: true,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedCompany = newValue;
-                            });
-                          },
-                          items: companies.map<DropdownMenuItem<String>>((
-                            String value,
-                          ) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                        ),
-                      ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+
+                  child: Text(
+                    widget.companyName,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.lightBlue,
                     ),
                   ),
                 ),
 
+                if (_selectedCompany != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'الحالة الحالية: ${getStatusLabel(currentStatusId)}',
+                    style: GoogleFonts.tajawal(
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 20),
-                // Stop type toggle buttons
+
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Row(
@@ -92,7 +228,7 @@ class _StopCompanyState extends State<StopCompany> {
                     ],
                   ),
                 ),
-                // Date input (only if temporary stop)
+
                 if (isTemporaryStop)
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -115,7 +251,7 @@ class _StopCompanyState extends State<StopCompany> {
                               color: Colors.grey[600],
                               fontSize: 16,
                             ),
-                            prefixIcon: Icon(
+                            prefixIcon: const Icon(
                               Icons.calendar_today,
                               color: Colors.lightBlue,
                             ),
@@ -152,7 +288,7 @@ class _StopCompanyState extends State<StopCompany> {
                             if (picked != null) {
                               setState(() {
                                 dateController.text =
-                                    "${picked.day}/${picked.month}/${picked.year}";
+                                "${picked.day}/${picked.month}/${picked.year}";
                               });
                             }
                           },
@@ -160,18 +296,15 @@ class _StopCompanyState extends State<StopCompany> {
                       ],
                     ),
                   ),
-                const SizedBox(height: 15),
 
-                // Submit button
+                const SizedBox(height: 15),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Handle stop logic
-                      },
+                      onPressed: submitCompanyStatus,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.lightBlue,
                         shape: RoundedRectangleBorder(
@@ -196,35 +329,6 @@ class _StopCompanyState extends State<StopCompany> {
     );
   }
 
-  Widget buildTabButton(String title, int index) {
-    final bool isSelected = selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            selectedTab = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: GoogleFonts.tajawal(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.black : Colors.grey,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget buildToggleButton(String title, bool value) {
     final bool isSelected = isTemporaryStop == value;
     return Expanded(
@@ -236,7 +340,7 @@ class _StopCompanyState extends State<StopCompany> {
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: isSelected ? Colors.lightBlue : Colors.white,
-          side: BorderSide(color: Colors.lightBlue),
+          side: const BorderSide(color: Colors.lightBlue),
           foregroundColor: isSelected ? Colors.white : Colors.lightBlue,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
