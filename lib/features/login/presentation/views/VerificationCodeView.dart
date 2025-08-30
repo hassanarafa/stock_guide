@@ -4,18 +4,80 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../constants.dart';
 import 'ResetPasswordView.dart';
 
-class VerificationCodeView extends StatelessWidget {
-  const VerificationCodeView({super.key});
+class VerificationCodeView extends StatefulWidget {
+  final String userId;
+  final String code;
+  final String phone;
+
+  const VerificationCodeView({
+    super.key,
+    required this.code,
+    required this.userId,
+    required this.phone,
+  });
+
+  @override
+  State<VerificationCodeView> createState() => _VerificationCodeViewState();
+}
+
+class _VerificationCodeViewState extends State<VerificationCodeView> {
+  late List<TextEditingController> controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    controllers = List.generate(6, (_) => TextEditingController());
+  }
+
+  @override
+  void dispose() {
+    for (var c in controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  String getEnteredCode() {
+    return controllers.map((c) => c.text.trim()).join();
+  }
+
+  String maskPhone(String phone) {
+    if (phone.length < 4) return phone; // fallback for short strings
+    String start = phone.substring(0, 3); // first 3 digits
+    String end = phone.substring(phone.length - 2); // last 2 digits
+    return "$start******$end";
+  }
+
+
+  void verifyCode() {
+    final entered = getEnteredCode();
+
+    if (entered.isEmpty || entered.length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("من فضلك أدخل الكود بالكامل")),
+      );
+      return;
+    }
+
+    if (entered == widget.code) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              ResetPasswordView(code: widget.code, userId: widget.userId),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("الكود غير صحيح")));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<TextEditingController> controllers = List.generate(
-      4,
-      (_) => TextEditingController(),
-    );
-
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -44,7 +106,6 @@ class VerificationCodeView extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                // Subtitle
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Column(
@@ -65,7 +126,7 @@ class VerificationCodeView extends StatelessWidget {
                       Directionality(
                         textDirection: TextDirection.ltr,
                         child: Text(
-                          "011******66",
+                          maskPhone(widget.phone),
                           style: GoogleFonts.tajawal(
                             textStyle: const TextStyle(
                               color: secondaryTextColor,
@@ -79,9 +140,10 @@ class VerificationCodeView extends StatelessWidget {
                   ),
                 ),
 
+                // Code inputs
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(4, (index) {
+                  children: List.generate(6, (index) {
                     return SizedBox(
                       width: 50,
                       child: TextField(
@@ -89,6 +151,12 @@ class VerificationCodeView extends StatelessWidget {
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
                         maxLength: 1,
+                        onChanged: (val) {
+                          if (val.isNotEmpty && index < 5) {
+                            // ✅ last index = 5 now
+                            FocusScope.of(context).nextFocus();
+                          }
+                        },
                         decoration: InputDecoration(
                           counterText: '',
                           border: OutlineInputBorder(
@@ -102,7 +170,7 @@ class VerificationCodeView extends StatelessWidget {
 
                 const SizedBox(height: 30),
 
-                // Verify Button
+                // Verify button
                 SizedBox(
                   width: double.infinity,
                   height: 45,
@@ -113,14 +181,7 @@ class VerificationCodeView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ResetPasswordView(),
-                        ),
-                      );
-                    },
+                    onPressed: verifyCode,
                     child: Text(
                       'تحقق',
                       style: GoogleFonts.tajawal(
@@ -135,11 +196,13 @@ class VerificationCodeView extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Resend Code
+                // Resend code
                 Center(
                   child: TextButton(
                     onPressed: () {
-                      // TODO: Resend code logic
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("إعادة إرسال الكود...")),
+                      );
                     },
                     child: Text(
                       'لم يصلك الرمز؟ أعد الإرسال',

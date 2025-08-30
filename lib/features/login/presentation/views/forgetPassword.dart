@@ -1,16 +1,86 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../../constants.dart';
 import 'VerificationCodeView.dart';
 
-class ForgotPasswordView extends StatelessWidget {
-  const ForgotPasswordView({super.key});
+class ForgotPasswordView extends StatefulWidget {
+  final String userId;
+  const ForgotPasswordView({super.key, required this.userId});
+
+  @override
+  State<ForgotPasswordView> createState() => _ForgotPasswordViewState();
+}
+
+class _ForgotPasswordViewState extends State<ForgotPasswordView> {
+  final TextEditingController phoneController = TextEditingController();
+  bool isLoading = false;
+
+  Future<void> sendCode() async {
+    if (phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("من فضلك أدخل رقم الموبايل")),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final url = Uri.parse(
+        'http://197.134.252.181/StockGuideAPI/User/SendCodeInForgetPass?MobileNoOrUserName=${phoneController.text.trim()}',
+      );
+
+      final response = await http.get(url);
+
+      print("🔵 API URL: $url");
+      print("🔵 Status: ${response.statusCode}");
+      print("🔵 Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body["status"] == 1) {
+          final data = body["data"];
+          print(data["code"]);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VerificationCodeView(
+                code: data["code"],
+                userId: widget.userId,
+                phone: phoneController.text.trim(),
+              ),
+            ),
+          );
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(body["message"] ?? "تم إرسال الكود بنجاح")),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(body["message"] ?? "فشل إرسال الكود")),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("خطأ في الاتصال: ${response.statusCode}")),
+        );
+      }
+    } catch (e) {
+      print("❌ Exception: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("فشل الاتصال بالخادم: $e")),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final TextEditingController phoneController = TextEditingController();
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -27,7 +97,6 @@ class ForgotPasswordView extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Title
                   Padding(
                     padding: const EdgeInsets.only(top: 20),
                     child: Text(
@@ -44,7 +113,6 @@ class ForgotPasswordView extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  // Subtitle
                   Padding(
                     padding: const EdgeInsets.only(bottom: 15),
                     child: Text(
@@ -61,7 +129,6 @@ class ForgotPasswordView extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // Phone TextField
                   TextField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
@@ -77,7 +144,6 @@ class ForgotPasswordView extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Send Button
                   SizedBox(
                     width: double.infinity,
                     height: 45,
@@ -88,15 +154,10 @@ class ForgotPasswordView extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const VerificationCodeView(),
-                          ),
-                        );
-                      },
-                      child: Text(
+                      onPressed: isLoading ? null : sendCode,
+                      child: isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
                         'إرسال',
                         style: GoogleFonts.tajawal(
                           textStyle: const TextStyle(

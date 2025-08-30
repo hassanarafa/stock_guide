@@ -137,14 +137,25 @@ class LoginView extends StatelessWidget {
                           padding: EdgeInsets.zero,
                           alignment: Alignment.centerLeft,
                         ),
-                        onPressed: () {
+                        onPressed: () async {
+                          final prefs = await SharedPreferences.getInstance();
+                          final userId = prefs.getString('userId');
+
+                          if (userId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("UserId غير موجود")),
+                            );
+                            return;
+                          }
+
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ForgotPasswordView(),
+                              builder: (context) => ForgotPasswordView(userId: userId),
                             ),
                           );
                         },
+
                         child: Text(
                           'نسيت كلمة السر؟',
                           style: GoogleFonts.tajawal(
