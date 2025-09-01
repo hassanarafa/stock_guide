@@ -6,12 +6,14 @@ class MainLayout extends StatefulWidget {
   final int companyId;
   final String companyName;
   final String userId;
+  final bool isAdmin; // ✅ Added isAdmin
 
   const MainLayout({
     super.key,
     required this.companyId,
     required this.companyName,
     required this.userId,
+    required this.isAdmin, // ✅ Required
   });
 
   @override
@@ -52,6 +54,7 @@ class _MainLayoutState extends State<MainLayout>
           userId: widget.userId,
           companyId: widget.companyId,
           companyName: widget.companyName,
+          isAdmin: widget.isAdmin, // ✅ Fixed: get from widget
         ),
       ),
     );

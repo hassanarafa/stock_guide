@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -22,6 +21,7 @@ class HomeWithCompanies extends StatefulWidget {
 class _HomeWithCompaniesState extends State<HomeWithCompanies> {
   List<Map<String, dynamic>> companyList = [];
   bool isLoading = true;
+  Map<int, bool> adminStatusByCompany = {}; // ✅ store admin per companyId
 
   @override
   void initState() {
@@ -29,20 +29,56 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     fetchCompanies();
   }
 
+  /// ✅ Step 1: fetch user info for a given company
+  Future<void> fetchUserInfo(String userId, int companyId) async {
+    try {
+      final url = Uri.parse(
+        "http://197.134.252.181/StockGuideAPI/User/GetUserById"
+        "?userId=$userId&companyId=$companyId",
+      );
+      final response = await http.get(url);
+      final data = json.decode(response.body);
+
+      if (data["status"] == 1 && data["data"] != null) {
+        setState(() {
+          adminStatusByCompany[companyId] = data["data"]["isAdmin"] ?? false;
+        });
+      } else {
+        setState(() {
+          adminStatusByCompany[companyId] = false;
+        });
+      }
+    } catch (e) {
+      print("Error fetching user info: $e");
+      setState(() {
+        adminStatusByCompany[companyId] = false;
+      });
+    }
+  }
+
+  /// ✅ Step 2: fetch all companies first
   Future<void> fetchCompanies() async {
     setState(() => isLoading = true);
+
     final url = Uri.parse(
       'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}',
     );
+
     try {
-      print(widget.userId);
       final response = await http.get(url);
       final data = json.decode(response.body);
+
       if (data['status'] == 1 && data['data'] != null) {
+        final companies = List<Map<String, dynamic>>.from(data['data']);
         setState(() {
-          companyList = List<Map<String, dynamic>>.from(data['data']);
+          companyList = companies;
           isLoading = false;
         });
+
+        // ✅ fetch admin status for each company
+        for (var company in companies) {
+          fetchUserInfo(widget.userId, company['companyId']);
+        }
       } else {
         setState(() {
           companyList = [];
@@ -66,9 +102,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
 
   Future<void> toggleCompanyStatus(int companyId, int statusId) async {
     try {
-
-      print(companyId);
-      print(statusId);
       final url = Uri.parse(
         "http://197.134.252.181/StockGuideAPI/Company/EditStatus",
       );
@@ -84,16 +117,11 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
         body: body,
       );
 
-      print(response.body);
-
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("تم تحديث حالة الشركة بنجاح ✅")),
         );
-
-        setState(() {
-          fetchCompanies();
-        });
+        fetchCompanies();
       } else {
         throw Exception("فشل تحديث الحالة: ${response.body}");
       }
@@ -109,7 +137,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: Color(0xFFF0F0F0),
+        backgroundColor: const Color(0xFFF0F0F0),
         appBar: AppBar(
           backgroundColor: Colors.white,
           title: Text(
@@ -131,7 +159,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
             ),
           ],
         ),
-
         floatingActionButton: FloatingActionButton(
           backgroundColor: primaryColor,
           tooltip: 'إضافة شركة',
@@ -146,7 +173,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
             }
           },
         ),
-
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
             : companyList.isEmpty
@@ -161,7 +187,8 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                 itemCount: companyList.length,
                 itemBuilder: (context, index) {
                   final company = companyList[index];
-                  final isActive = company['isActive'] == true;
+                  final companyId = company['companyId'];
+                  final isAdmin = adminStatusByCompany[companyId] ?? false;
 
                   return Card(
                     shape: RoundedRectangleBorder(
@@ -187,11 +214,9 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-
                           const SizedBox(height: 12),
                           Divider(color: Colors.grey.shade300, thickness: 1),
                           const SizedBox(height: 16),
-
                           Row(
                             children: [
                               Expanded(
@@ -239,7 +264,9 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                     MainLayout(
                                       userId: widget.userId,
                                       companyName: company['companyName'],
-                                      companyId: company['companyId'],
+                                      companyId: companyId,
+                                      isAdmin:
+                                          isAdmin, // ✅ pass per-company admin
                                     ),
                                   ),
                                   borderRadius: BorderRadius.circular(16),
@@ -277,9 +304,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 24),
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
@@ -325,14 +350,12 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                   ),
                                 ],
                               ),
-
                               Column(
                                 children: [
                                   Ink(
                                     decoration: ShapeDecoration(
                                       color: (company['statusId'] == 1)
-                                          ? Colors
-                                                .grey // لون معطل
+                                          ? Colors.grey
                                           : Colors.orange,
                                       shape: const CircleBorder(),
                                     ),
