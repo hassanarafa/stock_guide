@@ -150,11 +150,55 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.red),
               tooltip: 'تسجيل الخروج',
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => LoginView()),
-                  (route) => false,
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text(
+                        "تأكيد تسجيل الخروج",
+                        style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      content: Text(
+                        "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+                        style: GoogleFonts.tajawal(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      actionsAlignment: MainAxisAlignment.spaceEvenly,
+                      actions: [
+                        TextButton(
+                          child: Text(
+                            "إلغاء",
+                            style: GoogleFonts.tajawal(fontSize: 16, color: Colors.grey),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(false),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            "تسجيل الخروج",
+                            style: GoogleFonts.tajawal(fontSize: 16, color: Colors.white),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(true),
+                        ),
+                      ],
+                    );
+                  },
                 );
+
+                if (confirm == true) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => LoginView()),
+                        (route) => false,
+                  );
+                }
               },
             ),
           ],

@@ -33,7 +33,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   void initState() {
     super.initState();
 
-    if (widget.isAdmin) {
+    if (!widget.isAdmin) {
       // Admin → No AddMainLayout
       _pages = [
         StopMainLayout(
