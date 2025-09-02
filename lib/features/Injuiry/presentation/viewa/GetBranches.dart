@@ -134,13 +134,9 @@ class _GetBranchesState extends State<GetBranches> {
                         children: [
                           CircleAvatar(
                             radius: 14,
-                            backgroundColor: branch.isPaid
-                                ? Colors.green
-                                : Colors.red,
+                            backgroundColor: branch.isPaid ? Colors.green : Colors.orange,
                             child: Icon(
-                              branch.isPaid
-                                  ? Icons.check
-                                  : Icons.close,
+                              branch.isPaid ? Icons.check : Icons.warning_amber_rounded,
                               color: Colors.white,
                               size: 18,
                             ),

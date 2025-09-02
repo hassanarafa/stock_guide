@@ -116,10 +116,9 @@ class _GetMobilesState extends State<GetMobiles> {
                         children: [
                           CircleAvatar(
                             radius: 14,
-                            backgroundColor:
-                            user.isPaid ? Colors.green : Colors.red,
+                            backgroundColor: user.isPaid ? Colors.green : Colors.orange,
                             child: Icon(
-                              user.isPaid ? Icons.check : Icons.close,
+                              user.isPaid ? Icons.check : Icons.warning_amber_rounded,
                               color: Colors.white,
                               size: 18,
                             ),
