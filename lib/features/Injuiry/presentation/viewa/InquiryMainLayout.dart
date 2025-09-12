@@ -88,59 +88,78 @@ class _InquiryMainLayoutState extends State<InquiryMainLayout>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        elevation: 0,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
         backgroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: TabBar(
-                controller: _tabController,
-                dividerColor: Colors.white,
-                indicator: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+        body: Padding(
+          padding: const EdgeInsets.only(top: 15),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10, right: 5),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.blue,
+                      size: 28,
                     ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+              Container(
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: TabBar(
+                    controller: _tabController,
+                    dividerColor: Colors.white,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    labelColor: Colors.black,
+                    unselectedLabelColor: Colors.grey[600],
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    indicatorPadding: const EdgeInsets.all(2),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    tabs: const [
+                      Tab(child: Text("الفروع")),
+                      Tab(child: Text("الموبايل")),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    GetBranches(
+                      companyId: widget.companyId,
+                      userId: widget.userId,
+                    ),
+                    GetMobiles(companyId: widget.companyId),
                   ],
                 ),
-                labelColor: Colors.black,
-                unselectedLabelColor: Colors.grey[600],
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                indicatorPadding: const EdgeInsets.all(2),
-                indicatorSize: TabBarIndicatorSize.tab,
-                tabs: const [
-                  Tab(child: Text("الفروع")),
-                  Tab(child: Text("الموبايل")),
-                ],
               ),
-            ),
+            ],
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                GetBranches(companyId: widget.companyId, userId: widget.userId),
-                GetMobiles(companyId: widget.companyId),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

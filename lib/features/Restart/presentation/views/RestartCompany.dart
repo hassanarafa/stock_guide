@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../home/presentation/views/HomeViewWithComp.dart';
+
 class Company {
   final int id;
   final String name;
@@ -29,8 +31,17 @@ class Company {
 
 class RestartCompany extends StatefulWidget {
   final String userId;
+  final int companyStatus;
+  final int companyId;
+  final String companyName;
 
-  const RestartCompany({super.key, required this.userId});
+  const RestartCompany({
+    super.key,
+    required this.userId,
+    required this.companyStatus,
+    required this.companyId,
+    required this.companyName,
+  });
 
   @override
   State<RestartCompany> createState() => _RestartCompanyState();
@@ -41,48 +52,34 @@ class _RestartCompanyState extends State<RestartCompany> {
   TextEditingController dateController = TextEditingController();
 
   List<Company> companies = [];
-  Company? _selectedCompany;
+  late int _currentStatus;
 
   @override
   void initState() {
     super.initState();
-    fetchCompanies();
+    _currentStatus = widget.companyStatus;
   }
 
-  Future<void> fetchCompanies() async {
-    final url = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}",
-    );
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body);
-        final List<dynamic> data = body['data'];
-        print("/*/*");
-        print(data);
-
-        setState(() {
-          companies = data
-              .map((json) => Company.fromJson(json))
-              .where(
-                (company) => company.statusId == 2 || company.statusId == 3,
-              )
-              .toList();
-        });
-      }
-    } catch (e) {
-      print("Error fetching companies: $e");
+  String getStatusLabel(int? statusId) {
+    switch (statusId) {
+      case 1:
+        return 'نشطة';
+      case 3:
+        return 'إيقاف مؤقت';
+      case 2:
+        return 'إيقاف دائم';
+      default:
+        return 'غير معروف';
     }
   }
 
   Future<void> submitCompanyStatus() async {
-    if (_selectedCompany == null) {
-      await showMessageDialog("برجاء اختيار شركة");
+    if (_currentStatus == 1) {
+      await showMessageDialog(
+        '⚠️ هذه الشركة نشطة بالفعل (${getStatusLabel(_currentStatus)})',
+      );
       return;
     }
-
-    final companyId = _selectedCompany!.id;
-    final statusId = 1;
 
     String? toStatusDate;
     if (isTemporaryRestart) {
@@ -105,8 +102,8 @@ class _RestartCompanyState extends State<RestartCompany> {
     }
 
     final body = json.encode({
-      'companyId': companyId,
-      'statusId': statusId,
+      'companyId': widget.companyId,
+      'statusId': 1,
       'toStatusDate': toStatusDate ?? '',
     });
 
@@ -118,17 +115,19 @@ class _RestartCompanyState extends State<RestartCompany> {
 
     if (response.statusCode == 200) {
       setState(() {
-        final index = companies.indexWhere((c) => c.id == companyId);
+        _currentStatus = 1;
+        final index = companies.indexWhere((c) => c.id == widget.companyId);
         if (index != -1) {
           companies[index] = Company(
             id: companies[index].id,
             name: companies[index].name,
-            statusId: statusId,
+            statusId: 1,
             statusName: "نشط",
           );
         }
       });
       await showMessageDialog('✅ تم اعادة تشغيل الشركة بنجاح');
+      Navigator.pop(context);
     } else {
       await showMessageDialog('❌ فشل في اعادة تشغيل الشركة');
     }
@@ -171,37 +170,25 @@ class _RestartCompanyState extends State<RestartCompany> {
                 ),
                 const SizedBox(height: 20),
 
-                // Dropdown for companies
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue, width: 1.5),
-                      borderRadius: BorderRadius.circular(8),
+
+                  child: Text(
+                    widget.companyName,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.lightBlue,
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: DropdownButton<int>(
-                          value: _selectedCompany?.id,
-                          hint: const Text('اختر الشركة'),
-                          isExpanded: true,
-                          onChanged: (int? newId) {
-                            setState(() {
-                              _selectedCompany = companies.firstWhere(
-                                (c) => c.id == newId,
-                              );
-                            });
-                          },
-                          items: companies.map((company) {
-                            return DropdownMenuItem<int>(
-                              value: company.id,
-                              child: Text(company.name),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+                Text(
+                  'الحالة الحالية: ${getStatusLabel(_currentStatus)}',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 16,
+                    color: Colors.black87,
                   ),
                 ),
 
@@ -274,7 +261,7 @@ class _RestartCompanyState extends State<RestartCompany> {
                             final picked = await showDatePicker(
                               context: context,
                               initialDate: DateTime.now(),
-                              firstDate: DateTime(2020),
+                              firstDate: DateTime.now(),
                               lastDate: DateTime(2100),
                             );
                             if (picked != null) {
@@ -297,7 +284,9 @@ class _RestartCompanyState extends State<RestartCompany> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: submitCompanyStatus,
+                      onPressed: (_currentStatus == 1)
+                          ? null
+                          : submitCompanyStatus,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.lightBlue,
                         shape: RoundedRectangleBorder(

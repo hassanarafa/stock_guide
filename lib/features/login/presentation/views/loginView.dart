@@ -12,14 +12,28 @@ import '../../../home/presentation/views/HomeViewWithComp.dart';
 import '../../../signup/presentation/views/signup.dart';
 import 'forgetPassword.dart';
 
-class LoginView extends StatelessWidget {
+class LoginView extends StatefulWidget {
   const LoginView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final TextEditingController phoneController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
+  State<LoginView> createState() => _LoginViewState();
+}
 
+class _LoginViewState extends State<LoginView> {
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  bool _isPasswordVisible = false; // ✅ مكانه الصحيح هنا
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -38,7 +52,7 @@ class LoginView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title & Subtitle
+                    // Title
                     Padding(
                       padding: const EdgeInsets.only(top: 20),
                       child: Text(
@@ -112,10 +126,10 @@ class LoginView extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // Password TextField
+                    // Password TextField with Eye
                     TextField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
                         hintText: 'كلمة المرور',
                         hintStyle: GoogleFonts.tajawal(),
@@ -123,6 +137,18 @@ class LoginView extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
                     ),
 
@@ -151,11 +177,11 @@ class LoginView extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ForgotPasswordView(userId: userId),
+                              builder: (context) =>
+                                  ForgotPasswordView(userId: userId),
                             ),
                           );
                         },
-
                         child: Text(
                           'نسيت كلمة السر؟',
                           style: GoogleFonts.tajawal(
@@ -218,7 +244,8 @@ class LoginView extends StatelessWidget {
                             if (loginJson['status'] == 1) {
                               final String userId = loginJson['data']['userId'];
 
-                              final prefs = await SharedPreferences.getInstance();
+                              final prefs =
+                              await SharedPreferences.getInstance();
                               await prefs.setString('userId', userId);
 
                               // Step 2: Fetch companies using userId
@@ -227,9 +254,8 @@ class LoginView extends StatelessWidget {
                               );
 
                               final companyResponse = await http.get(companyUrl);
-                              final companyJson = jsonDecode(
-                                companyResponse.body,
-                              );
+                              final companyJson =
+                              jsonDecode(companyResponse.body);
 
                               print("Company Response: $companyJson");
 
@@ -249,7 +275,7 @@ class LoginView extends StatelessWidget {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => const HomeView(),
-                                  ), // Import if not already
+                                  ),
                                 );
                               }
                             } else {
@@ -267,13 +293,13 @@ class LoginView extends StatelessWidget {
                             print("Login Error: $e");
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('حدث خطأ أثناء الاتصال بالخادم'),
+                                content:
+                                Text('حدث خطأ أثناء الاتصال بالخادم'),
                                 backgroundColor: Colors.red,
                               ),
                             );
                           }
                         },
-
                         child: Text(
                           'تسجيل الدخول',
                           style: GoogleFonts.tajawal(

@@ -38,22 +38,30 @@ class _RenewMainLayoutState extends State<RenewMainLayout>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(elevation: 0, backgroundColor: Colors.white),
-        body: Container(
-          color: Colors.white,
+        backgroundColor: Colors.white,
+        body: Padding(
+          padding: const EdgeInsets.only(top: 15),
           child: Column(
             children: [
-              // Top Custom Styled Tabs
+              Padding(
+                padding: const EdgeInsets.only(top: 10,right: 5),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.blue, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
               Container(
-                height: 70,
-                margin: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(10.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: TabBar(
                     controller: _tabController,
                     dividerColor: Colors.white,

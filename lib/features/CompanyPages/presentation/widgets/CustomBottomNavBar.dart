@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:stock_guide/features/Add/presentation/views/AddMainLayout.dart';
 
 import '../../../Injuiry/presentation/viewa/InquiryMainLayout.dart';
@@ -11,6 +12,7 @@ class CustomBottomNavBar extends StatefulWidget {
   final String companyName;
   final String userId;
   final bool isAdmin;
+  final int companyStatus;
 
   const CustomBottomNavBar({
     super.key,
@@ -18,6 +20,7 @@ class CustomBottomNavBar extends StatefulWidget {
     required this.companyName,
     required this.userId,
     required this.isAdmin,
+    required this.companyStatus,
   });
 
   @override
@@ -38,19 +41,17 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
           userId: widget.userId,
           companyId: widget.companyId,
           companyName: widget.companyName,
+          companyStatus: widget.companyStatus,
         ),
         RestartMainLayout(
           userId: widget.userId,
           companyId: widget.companyId,
+
+          companyName: widget.companyName,
+          companyStatus: widget.companyStatus,
         ),
-        RenewMainLayout(
-          companyId: widget.companyId,
-          userId: widget.userId,
-        ),
-        InquiryMainLayout(
-          userId: widget.userId,
-          companyId: widget.companyId,
-        ),
+        RenewMainLayout(companyId: widget.companyId, userId: widget.userId),
+        InquiryMainLayout(userId: widget.userId, companyId: widget.companyId),
       ];
     } else {
       _pages = [
@@ -62,19 +63,16 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
           userId: widget.userId,
           companyId: widget.companyId,
           companyName: widget.companyName,
+          companyStatus: widget.companyStatus,
         ),
         RestartMainLayout(
           userId: widget.userId,
           companyId: widget.companyId,
+          companyName: widget.companyName,
+          companyStatus: widget.companyStatus,
         ),
-        RenewMainLayout(
-          companyId: widget.companyId,
-          userId: widget.userId,
-        ),
-        InquiryMainLayout(
-          userId: widget.userId,
-          companyId: widget.companyId,
-        ),
+        RenewMainLayout(companyId: widget.companyId, userId: widget.userId),
+        InquiryMainLayout(userId: widget.userId, companyId: widget.companyId),
       ];
     }
   }
@@ -83,111 +81,113 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   Widget build(BuildContext context) {
     final items = !widget.isAdmin
         ? [
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 0
-              ? 'assets/icons/stop.png'
-              : 'assets/icons/stop(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'ايقاف',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 1
-              ? 'assets/icons/stop.png'
-              : 'assets/icons/stop(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'اعادة تشغيل',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 2
-              ? 'assets/icons/renew.png'
-              : 'assets/icons/renew(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'تجديد',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 3
-              ? 'assets/icons/inquiry.png'
-              : 'assets/icons/inquiry(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'استعلام',
-      ),
-    ]
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 0
+                    ? 'assets/icons/stop.png'
+                    : 'assets/icons/stop(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'ايقاف',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 1
+                    ? 'assets/icons/stop.png'
+                    : 'assets/icons/stop(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'اعادة تشغيل',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 2
+                    ? 'assets/icons/renew.png'
+                    : 'assets/icons/renew(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'تجديد',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 3
+                    ? 'assets/icons/inquiry.png'
+                    : 'assets/icons/inquiry(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'استعلام',
+            ),
+          ]
         : [
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 0
-              ? 'assets/icons/add.png'
-              : 'assets/icons/add(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'اضافة',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 1
-              ? 'assets/icons/stop.png'
-              : 'assets/icons/stop(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'ايقاف',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 2
-              ? 'assets/icons/stop.png'
-              : 'assets/icons/stop(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'اعادة تشغيل',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 3
-              ? 'assets/icons/renew.png'
-              : 'assets/icons/renew(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'تجديد',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: Colors.white,
-        icon: Image.asset(
-          _currentIndex == 4
-              ? 'assets/icons/inquiry.png'
-              : 'assets/icons/inquiry(disable).png',
-          width: 24,
-          height: 24,
-        ),
-        label: 'استعلام',
-      ),
-    ];
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 0
+                    ? 'assets/icons/add.png'
+                    : 'assets/icons/add(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'اضافة',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 1
+                    ? 'assets/icons/stop.png'
+                    : 'assets/icons/stop(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'ايقاف',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 2
+                    ? 'assets/icons/stop.png'
+                    : 'assets/icons/stop(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'اعادة تشغيل',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 3
+                    ? 'assets/icons/renew.png'
+                    : 'assets/icons/renew(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'تجديد',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Colors.white,
+              icon: Image.asset(
+                _currentIndex == 4
+                    ? 'assets/icons/inquiry.png'
+                    : 'assets/icons/inquiry(disable).png',
+                width: 24,
+                height: 24,
+              ),
+              label: 'استعلام',
+            ),
+          ];
 
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: Container(color: Colors.white,
+          child: _pages[_currentIndex]
+      ),
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
           splashColor: Colors.transparent,

@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 
 import '../../../../constants.dart';
 
-
 class BranchFeeSetting {
   final int id;
   final int noMonths;
@@ -63,7 +62,16 @@ class BranchModel {
 class RenewBranch extends StatefulWidget {
   final int companyId;
   final String userId;
-  const RenewBranch({super.key, required this.companyId, required this.userId});
+  final String? branchName;
+  final int? branchId; // ✅
+
+  const RenewBranch({
+    super.key,
+    required this.companyId,
+    required this.userId,
+    this.branchName,
+    this.branchId,
+  });
 
   @override
   State<RenewBranch> createState() => _RenewBranchState();
@@ -127,26 +135,47 @@ class _RenewBranchState extends State<RenewBranch> {
 
       final response = await http.get(url);
 
+      print("/*/*/*/*/*");
+      print(response.body);
+      print("/*/*/*/*/*");
+
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        final List<dynamic> data = decoded['data'] ?? [];
-        print(data.map((e) => BranchModel.fromJson(e)).toList());
+
+        // ✅ هنا لازم ناخد currentUnpaidSubscription بدل من data مباشرة
+        final List<dynamic> data =
+            decoded['data']?['currentUnpaidSubscription'] ?? [];
+
         if (mounted) {
           setState(() {
-              branches = data.map((e) => BranchModel.fromJson(e)).toList();
-              isLoadingBranches = false;
+            branches = data.map((e) => BranchModel.fromJson(e)).toList();
+            isLoadingBranches = false;
+
+            if (widget.branchId != null) {
+              try {
+                _selectedBranch = branches.firstWhere(
+                  (b) => b.id == widget.branchId,
+                );
+              } catch (e) {
+                _selectedBranch = branches.isNotEmpty ? branches.first : null;
+              }
+            } else {
+              _selectedBranch = null;
+            }
           });
         }
+
+        if (branches.isEmpty) {
+          await showMessageDialog("لا يوجد فروع تحتاج تجديد ✅");
+        }
       } else {
-        throw Exception("Failed to fetch branches");
+        throw Exception("فشل تحميل الفروع (كود: ${response.statusCode})");
       }
     } catch (e) {
       if (mounted) {
         setState(() => isLoadingBranches = false);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("خطأ في تحميل الفروع: $e")),
-      );
+      await showMessageDialog("خطأ في تحميل الفروع ❌: $e");
     }
   }
 
@@ -161,8 +190,7 @@ class _RenewBranchState extends State<RenewBranch> {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final data = body['data'] as List;
-        final options =
-        data.map((e) => BranchFeeSetting.fromJson(e)).toList();
+        final options = data.map((e) => BranchFeeSetting.fromJson(e)).toList();
 
         setState(() {
           feeOptions = options;
@@ -170,13 +198,11 @@ class _RenewBranchState extends State<RenewBranch> {
           isLoadingFees = false;
         });
       } else {
-        throw Exception("Failed to load fee settings");
+        throw Exception("فشل تحميل الاشتراكات (كود: ${response.statusCode})");
       }
     } catch (e) {
       setState(() => isLoadingFees = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("حدث خطأ أثناء تحميل الاشتراكات: $e")),
-      );
+      await showMessageDialog("حدث خطأ أثناء تحميل الاشتراكات ❌: $e");
     }
   }
 
@@ -187,7 +213,8 @@ class _RenewBranchState extends State<RenewBranch> {
       File file = File(result.files.single.path!);
 
       var uri = Uri.parse(
-          "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionFile");
+        "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionFile",
+      );
 
       var request = http.MultipartRequest("POST", uri);
       request.fields['SubscriptionBranchId'] =
@@ -201,7 +228,8 @@ class _RenewBranchState extends State<RenewBranch> {
         await showMessageDialog("تم رفع الإيصال بنجاح ✅");
       } else {
         await showMessageDialog(
-            "فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
+          "فشل رفع الإيصال ❌ (كود: ${response.statusCode})",
+        );
       }
     } else {
       await showMessageDialog("لم يتم اختيار ملف 📄");
@@ -214,8 +242,9 @@ class _RenewBranchState extends State<RenewBranch> {
       return;
     }
 
-    final url =
-    Uri.parse("http://197.134.252.181/StockGuideAPI/Branch/UpdateBranch");
+    final url = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/Branch/UpdateBranch",
+    );
 
     final body = {
       "branchId": _selectedBranch!.id,
@@ -240,8 +269,7 @@ class _RenewBranchState extends State<RenewBranch> {
       if (response.statusCode == 200) {
         await showMessageDialog("تم تجديد الاشتراك بنجاح ✅");
       } else {
-        await showMessageDialog(
-            "فشل التجديد ❌ (كود: ${response.statusCode})");
+        await showMessageDialog("فشل التجديد ❌ (كود: ${response.statusCode})");
       }
     } catch (e) {
       await showMessageDialog("خطأ في الاتصال بالسيرفر ❌: $e");
@@ -275,21 +303,22 @@ class _RenewBranchState extends State<RenewBranch> {
             child: isLoadingBranches
                 ? const Center(child: CircularProgressIndicator())
                 : DropdownButtonHideUnderline(
-              child: DropdownButton<BranchModel>(
-                hint: const Text('اختر الفرع'),
-                value: _selectedBranch,
-                isExpanded: true,
-                onChanged: (branch) {
-                  setState(() => _selectedBranch = branch);
-                },
-                items: branches.map((branch) {
-                  return DropdownMenuItem(
-                    value: branch,
-                    child: Text(branch.name),
-                  );
-                }).toList(),
-              )
-            ),
+                    child: DropdownButton<BranchModel>(
+                      hint: const Text('اختر الفرع'),
+                      value: _selectedBranch,
+                      // ✅ لو جاي من GetBranches هيكون متحدد
+                      isExpanded: true,
+                      onChanged: (branch) {
+                        setState(() => _selectedBranch = branch);
+                      },
+                      items: branches.map((branch) {
+                        return DropdownMenuItem(
+                          value: branch,
+                          child: Text(branch.name),
+                        );
+                      }).toList(),
+                    ),
+                  ),
           ),
 
           const SizedBox(height: 20),
@@ -297,59 +326,57 @@ class _RenewBranchState extends State<RenewBranch> {
           isLoadingFees
               ? const Center(child: CircularProgressIndicator())
               : Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: feeOptions.map((option) {
-              final isSelected = _selectedFee?.id == option.id;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedFee = option),
-                  child: Container(
-                    margin:
-                    const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.blue.shade50
-                          : Colors.white,
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.blue
-                            : Colors.grey.shade400,
-                        width: 1.5,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: feeOptions.map((option) {
+                    final isSelected = _selectedFee?.id == option.id;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedFee = option),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.blue.shade50
+                                : Colors.white,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.blue
+                                  : Colors.grey.shade400,
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                "${option.noMonths} شهور",
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 16,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? Colors.blue
+                                      : Colors.black,
+                                ),
+                              ),
+                              Text(
+                                "(${option.fees.toStringAsFixed(0)} جم)",
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 14,
+                                  color: isSelected
+                                      ? Colors.blue
+                                      : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "${option.noMonths} شهور",
-                          style: GoogleFonts.tajawal(
-                            fontSize: 16,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isSelected
-                                ? Colors.blue
-                                : Colors.black,
-                          ),
-                        ),
-                        Text(
-                          "(${option.fees.toStringAsFixed(0)} جم)",
-                          style: GoogleFonts.tajawal(
-                            fontSize: 14,
-                            color: isSelected
-                                ? Colors.blue
-                                : Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                    );
+                  }).toList(),
                 ),
-              );
-            }).toList(),
-          ),
 
           const SizedBox(height: 25),
 
@@ -369,6 +396,7 @@ class _RenewBranchState extends State<RenewBranch> {
           const SizedBox(height: 20),
 
           /// Buttons
+          /// Buttons
           Row(
             children: [
               Expanded(
@@ -376,9 +404,10 @@ class _RenewBranchState extends State<RenewBranch> {
                   onPressed: renewBranch,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
+                    elevation: 3,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(20), // 🔵 زوايا أنعم
                     ),
                   ),
                   child: Text(
@@ -386,7 +415,7 @@ class _RenewBranchState extends State<RenewBranch> {
                     style: GoogleFonts.tajawal(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                      fontSize: 18,
                     ),
                   ),
                 ),
@@ -396,10 +425,12 @@ class _RenewBranchState extends State<RenewBranch> {
                 child: ElevatedButton(
                   onPressed: _uploadReceipt,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: Colors.green,
+                    // ✅ لون مختلف يميز زر الإرفاق
+                    elevation: 3,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                   child: Text(
@@ -407,8 +438,9 @@ class _RenewBranchState extends State<RenewBranch> {
                     style: GoogleFonts.tajawal(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 18,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),

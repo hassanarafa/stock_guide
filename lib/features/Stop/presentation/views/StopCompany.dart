@@ -6,8 +6,16 @@ import 'package:http/http.dart' as http;
 class StopCompany extends StatefulWidget {
   final String userId;
   final String companyName;
+  final int companyId;
+  final int companyStatus;
 
-  const StopCompany({super.key, required this.userId, required this.companyName});
+  const StopCompany({
+    super.key,
+    required this.userId,
+    required this.companyName,
+    required this.companyId,
+    required this.companyStatus,
+  });
 
   @override
   State<StopCompany> createState() => _StopCompanyState();
@@ -19,51 +27,13 @@ class _StopCompanyState extends State<StopCompany> {
   TextEditingController dateController = TextEditingController();
 
   List<Map<String, dynamic>> companies = [];
-  String? _selectedCompany;
   bool isLoading = true;
   int? currentStatusId;
 
   @override
   void initState() {
     super.initState();
-    fetchCompanies();
-  }
-
-  Future<void> fetchCompanies() async {
-    final response = await http.get(
-      Uri.parse(
-        'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}',
-      ),
-    );
-
-    if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
-
-      if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
-        final List<dynamic> data = decoded['data'];
-
-        setState(() {
-          companies = data
-              .where((item) => item['statusId'] == 1)
-              .map<Map<String, dynamic>>((item) {
-            return {
-              'id': item['companyId'],
-              'name': item['companyName'],
-              'statusId': item['statusId'],
-            };
-          }).toList();
-
-          isLoading = false;
-        });
-      } else {
-        throw Exception("Unexpected JSON format");
-      }
-    } else {
-      setState(() {
-        isLoading = false;
-      });
-      throw Exception('Failed to load companies');
-    }
+    currentStatusId = widget.companyStatus;
   }
 
   String getStatusLabel(int? statusId) {
@@ -112,13 +82,11 @@ class _StopCompanyState extends State<StopCompany> {
   }
 
   Future<void> submitCompanyStatus() async {
-    if (_selectedCompany == null) {
-      await showMessageDialog("برجاء ادخال شركة");
+    if (currentStatusId == 2 || currentStatusId == 3) {
+      await showMessageDialog('⚠️ هذه الشركة موقوفة بالفعل (${getStatusLabel(currentStatusId)})');
       return;
     }
 
-    final selected = companies.firstWhere((c) => c['name'] == _selectedCompany);
-    final companyId = selected['id'];
     final statusId = isTemporaryStop ? 3 : 2;
 
     String? toStatusDate;
@@ -143,7 +111,7 @@ class _StopCompanyState extends State<StopCompany> {
     }
 
     final body = json.encode({
-      'companyId': companyId,
+      'companyId': widget.companyId,
       'statusId': statusId,
       'toStatusDate': toStatusDate ?? '',
     });
@@ -157,13 +125,13 @@ class _StopCompanyState extends State<StopCompany> {
     if (response.statusCode == 200) {
       setState(() {
         currentStatusId = statusId;
-        final index = companies.indexWhere((c) => c['id'] == companyId);
+        final index = companies.indexWhere((c) => c['id'] == widget.companyId);
         if (index != -1) {
           companies[index]['statusId'] = statusId;
         }
       });
-
       await showMessageDialog('✅ تم تغيير حالة الشركة بنجاح');
+      Navigator.pop(context);
     } else {
       await showMessageDialog('❌ فشل في تغيير حالة الشركة');
     }
@@ -191,8 +159,8 @@ class _StopCompanyState extends State<StopCompany> {
                 ),
                 const SizedBox(height: 20),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
 
                   child: Text(
                     widget.companyName,
@@ -204,16 +172,14 @@ class _StopCompanyState extends State<StopCompany> {
                   ),
                 ),
 
-                if (_selectedCompany != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'الحالة الحالية: ${getStatusLabel(currentStatusId)}',
-                    style: GoogleFonts.tajawal(
-                      fontSize: 16,
-                      color: Colors.black87,
-                    ),
+                const SizedBox(height: 10),
+                Text(
+                  'الحالة الحالية: ${getStatusLabel(currentStatusId)}',
+                  style: GoogleFonts.tajawal(
+                    fontSize: 16,
+                    color: Colors.black87,
                   ),
-                ],
+                ),
 
                 const SizedBox(height: 20),
 
@@ -282,13 +248,13 @@ class _StopCompanyState extends State<StopCompany> {
                             final picked = await showDatePicker(
                               context: context,
                               initialDate: DateTime.now(),
-                              firstDate: DateTime(2020),
+                              firstDate: DateTime.now(),
                               lastDate: DateTime(2100),
                             );
                             if (picked != null) {
                               setState(() {
                                 dateController.text =
-                                "${picked.day}/${picked.month}/${picked.year}";
+                                    "${picked.day}/${picked.month}/${picked.year}";
                               });
                             }
                           },
@@ -304,7 +270,9 @@ class _StopCompanyState extends State<StopCompany> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: submitCompanyStatus,
+                      onPressed: (currentStatusId == 2 || currentStatusId == 3)
+                          ? null // 🚫 Disabled if already stopped
+                          : submitCompanyStatus,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.lightBlue,
                         shape: RoundedRectangleBorder(

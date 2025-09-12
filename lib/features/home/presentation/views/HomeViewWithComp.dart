@@ -56,7 +56,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     }
   }
 
-  /// ✅ Step 2: fetch all companies first
   Future<void> fetchCompanies() async {
     setState(() => isLoading = true);
 
@@ -75,7 +74,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
           isLoading = false;
         });
 
-        // ✅ fetch admin status for each company
         for (var company in companies) {
           fetchUserInfo(widget.userId, company['companyId']);
         }
@@ -310,7 +308,8 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                       companyName: company['companyName'],
                                       companyId: companyId,
                                       isAdmin:
-                                          isAdmin, // ✅ pass per-company admin
+                                          isAdmin,
+                                      companyStatus: company['statusId'],
                                     ),
                                   ),
                                   borderRadius: BorderRadius.circular(16),
