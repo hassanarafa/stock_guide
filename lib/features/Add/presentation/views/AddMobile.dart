@@ -459,7 +459,7 @@ class _AddMobileState extends State<AddMobile> {
     return Scaffold(
       backgroundColor: Colors.white,
       bottomSheet: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: Colors.grey)),
@@ -835,85 +835,89 @@ class _AddMobileState extends State<AddMobile> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: ListTile(
-                            leading: Checkbox(
-                              value: branch['checked'] ?? false,
-                              onChanged: (val) => setState(
-                                () => branch['checked'] = val ?? false,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: ListTile(
+                              leading: Checkbox(
+                                value: branch['checked'] ?? false,
+                                onChanged: (val) => setState(
+                                  () => branch['checked'] = val ?? false,
+                                ),
                               ),
-                            ),
-                            title: Text(
-                              branch['name']!,
-                              style: GoogleFonts.tajawal(
-                                fontWeight: FontWeight.bold,
-                                color: primaryColor,
+                              title: Text(
+                                branch['name']!,
+                                style: GoogleFonts.tajawal(
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryColor,
+                                ),
                               ),
-                            ),
-                            subtitle: Text(
-                              branch['amount']!,
-                              style: GoogleFonts.tajawal(),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blueAccent,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isEditing = true;
-                                      _editingUserId =
-                                          branch['userId']; // حفظ الـ userId
-                                      final fullName = branch['name'] ?? '';
-                                      final firstPart = fullName.contains('-')
-                                          ? fullName.split('-').first.trim()
-                                          : fullName;
+                              subtitle: Text(
+                                branch['amount']!,
+                                style: GoogleFonts.tajawal(),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Colors.blueAccent,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isEditing = true;
+                                        _editingUserId =
+                                            branch['userId']; // حفظ الـ userId
+                                        final fullName = branch['name'] ?? '';
+                                        final firstPart = fullName.contains('-')
+                                            ? fullName.split('-').first.trim()
+                                            : fullName;
 
-                                      nameController.text = firstPart;
-                                      phoneController.text =
-                                          branch['mobile'] ?? '';
-                                      passwordController.text =
-                                          branch['password'] ?? '';
+                                        nameController.text = firstPart;
+                                        phoneController.text =
+                                            branch['mobile'] ?? '';
+                                        passwordController.text =
+                                            branch['password'] ?? '';
 
-                                      _selectedFee = _feeOptions.firstWhere(
-                                        (f) => f.noMonths == branch['noMonth'],
-                                        orElse: () => _feeOptions.first,
+                                        _selectedFee = _feeOptions.firstWhere(
+                                          (f) => f.noMonths == branch['noMonth'],
+                                          orElse: () => _feeOptions.first,
+                                        );
+
+                                        _agreeToTerms =
+                                            branch['hasRightToInsertBranch'] ??
+                                            false;
+                                        _agreeToPrivacy =
+                                            branch['hasRightToInsertUsers'] ??
+                                            false;
+                                      });
+
+                                      _scrollController.animateTo(
+                                        0,
+                                        duration: const Duration(
+                                          milliseconds: 500,
+                                        ),
+                                        curve: Curves.easeInOut,
                                       );
-
-                                      _agreeToTerms =
-                                          branch['hasRightToInsertBranch'] ??
-                                          false;
-                                      _agreeToPrivacy =
-                                          branch['hasRightToInsertUsers'] ??
-                                          false;
-                                    });
-
-                                    _scrollController.animateTo(
-                                      0,
-                                      duration: const Duration(
-                                        milliseconds: 500,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.redAccent,
+                                    },
                                   ),
-                                  onPressed: () => deleteUser(
-                                    branch['userId'],
-                                    widget.companyId,
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () => deleteUser(
+                                      branch['userId'],
+                                      widget.companyId,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );
                       }),
+                      const SizedBox(height: 90),
                     ],
                   ),
                 ),

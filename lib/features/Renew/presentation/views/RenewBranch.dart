@@ -306,7 +306,6 @@ class _RenewBranchState extends State<RenewBranch> {
                     child: DropdownButton<BranchModel>(
                       hint: const Text('اختر الفرع'),
                       value: _selectedBranch,
-                      // ✅ لو جاي من GetBranches هيكون متحدد
                       isExpanded: true,
                       onChanged: (branch) {
                         setState(() => _selectedBranch = branch);
@@ -395,8 +394,6 @@ class _RenewBranchState extends State<RenewBranch> {
 
           const SizedBox(height: 20),
 
-          /// Buttons
-          /// Buttons
           Row(
             children: [
               Expanded(

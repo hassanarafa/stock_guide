@@ -276,33 +276,22 @@ class _RenewMobileState extends State<RenewMobile> {
             ),
             child: isLoadingMobiles
                 ? const Center(child: CircularProgressIndicator())
-                : (widget.mobileName != null
-                      ? Center(
-                          child: Text(
-                            'تجديد ${widget.mobileName}',
-                            style: GoogleFonts.tajawal(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        )
-                      : DropdownButtonHideUnderline(
-                          child: DropdownButton<MobileUser>(
-                            hint: const Text('اختر الموبايل'),
-                            value: _selectedMobile,
-                            isExpanded: true,
-                            onChanged: (mobile) {
-                              setState(() => _selectedMobile = mobile);
-                            },
-                            items: mobiles.map((mobile) {
-                              return DropdownMenuItem(
-                                value: mobile,
-                                child: Text(mobile.name),
-                              );
-                            }).toList(),
-                          ),
-                        )),
+                : DropdownButtonHideUnderline(
+                    child: DropdownButton<MobileUser>(
+                      hint: const Text('اختر الموبايل'),
+                      value: _selectedMobile,
+                      isExpanded: true,
+                      onChanged: (mobile) {
+                        setState(() => _selectedMobile = mobile);
+                      },
+                      items: mobiles.map((mobile) {
+                        return DropdownMenuItem(
+                          value: mobile,
+                          child: Text(mobile.name),
+                        );
+                      }).toList(),
+                    ),
+                  ),
           ),
 
           const SizedBox(height: 20),
