@@ -86,7 +86,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     }
   }
 
-
   Future<void> fetchCompanies() async {
     setState(() {
       isLoading = true;
@@ -291,7 +290,11 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                           fetchCompanies();
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("⚠️ ما زال لا يوجد اتصال بالإنترنت")),
+                            const SnackBar(
+                              content: Text(
+                                "⚠️ ما زال لا يوجد اتصال بالإنترنت",
+                              ),
+                            ),
                           );
                         }
                       },
@@ -382,137 +385,141 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 40),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () => navigateToPage(
-                                    MainLayout(
-                                      userId: widget.userId,
-                                      companyName: company['companyName'],
-                                      companyId: companyId,
-                                      isAdmin: isAdmin,
-                                      companyStatus: company['statusId'],
-                                    ),
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.shade50,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Colors.green.shade100,
+                              if (isAdmin) ...{
+                                const SizedBox(width: 40),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => navigateToPage(
+                                      MainLayout(
+                                        userId: widget.userId,
+                                        companyName: company['companyName'],
+                                        companyId: companyId,
+                                        isAdmin: isAdmin,
+                                        companyStatus: company['statusId'],
                                       ),
                                     ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.business,
-                                          size: 30,
-                                          color: Colors.green.shade700,
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.green.shade100,
                                         ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'إدارة الشركة',
-                                          style: GoogleFonts.tajawal(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.green.shade800,
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.business,
+                                            size: 30,
+                                            color: Colors.green.shade700,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'إدارة الشركة',
+                                            style: GoogleFonts.tajawal(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.green.shade800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              },
                             ],
                           ),
-                          const SizedBox(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Column(
-                                children: [
-                                  Ink(
-                                    decoration: ShapeDecoration(
-                                      color:
-                                          (company['statusId'] == 2 ||
-                                              company['statusId'] == 3)
-                                          ? Colors.grey
-                                          : Colors.redAccent,
-                                      shape: const CircleBorder(),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.stop,
-                                        color: Colors.white,
-                                        size: 28,
+                          if (isAdmin) ...{
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Column(
+                                  children: [
+                                    Ink(
+                                      decoration: ShapeDecoration(
+                                        color:
+                                            (company['statusId'] == 2 ||
+                                                company['statusId'] == 3)
+                                            ? Colors.grey
+                                            : Colors.redAccent,
+                                        shape: const CircleBorder(),
                                       ),
-                                      onPressed:
-                                          (company['statusId'] == 2 ||
-                                              company['statusId'] == 3)
-                                          ? null
-                                          : () => toggleCompanyStatus(
-                                              company['companyId'],
-                                              2,
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    "إيقاف دائم",
-                                    style: GoogleFonts.tajawal(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color:
-                                          (company['statusId'] == 2 ||
-                                              company['statusId'] == 3)
-                                          ? Colors.grey
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Ink(
-                                    decoration: ShapeDecoration(
-                                      color: (company['statusId'] == 1)
-                                          ? Colors.grey
-                                          : Colors.orange,
-                                      shape: const CircleBorder(),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.restart_alt,
-                                        color: Colors.white,
-                                        size: 28,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.stop,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                        onPressed:
+                                            (company['statusId'] == 2 ||
+                                                company['statusId'] == 3)
+                                            ? null
+                                            : () => toggleCompanyStatus(
+                                                company['companyId'],
+                                                2,
+                                              ),
                                       ),
-                                      onPressed: (company['statusId'] == 1)
-                                          ? null
-                                          : () => toggleCompanyStatus(
-                                              company['companyId'],
-                                              1,
-                                            ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    "إعادة تشغيل",
-                                    style: GoogleFonts.tajawal(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: (company['statusId'] == 1)
-                                          ? Colors.grey
-                                          : Colors.black,
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "إيقاف دائم",
+                                      style: GoogleFonts.tajawal(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color:
+                                            (company['statusId'] == 2 ||
+                                                company['statusId'] == 3)
+                                            ? Colors.grey
+                                            : Colors.black,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    Ink(
+                                      decoration: ShapeDecoration(
+                                        color: (company['statusId'] == 1)
+                                            ? Colors.grey
+                                            : Colors.orange,
+                                        shape: const CircleBorder(),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.restart_alt,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                        onPressed: (company['statusId'] == 1)
+                                            ? null
+                                            : () => toggleCompanyStatus(
+                                                company['companyId'],
+                                                1,
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "إعادة تشغيل",
+                                      style: GoogleFonts.tajawal(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: (company['statusId'] == 1)
+                                            ? Colors.grey
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          },
                         ],
                       ),
                     ),

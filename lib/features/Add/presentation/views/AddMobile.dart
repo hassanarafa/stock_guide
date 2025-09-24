@@ -206,34 +206,6 @@ class _AddMobileState extends State<AddMobile> {
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          "تأكيد الحذف",
-          textAlign: TextAlign.center,
-          style: GoogleFonts.tajawal(),
-        ),
-        content: Text(
-          "هل تريد حذف هذا المستخدم؟",
-          style: GoogleFonts.tajawal(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text("إلغاء", style: GoogleFonts.tajawal()),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text("حذف", style: GoogleFonts.tajawal(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
     try {
       final body = jsonEncode({
         "companyId": companyId,
@@ -254,7 +226,7 @@ class _AddMobileState extends State<AddMobile> {
 
       if (response.statusCode == 200) {
         final resBody = jsonDecode(response.body);
-        if (resBody['success'] == true) {
+        if (resBody['status'] == 1) {
           setState(() {
             _users.removeWhere((u) => u['userId'] == userId);
           });
@@ -949,6 +921,14 @@ class _AddMobileState extends State<AddMobile> {
                                               style: GoogleFonts.tajawal(
                                                 fontSize: 14,
                                                 color: Colors.grey[600],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              "الرسوم: ${user['fees']} ج.م - لمدة ${user['noMonth']} شهر",
+                                              style: GoogleFonts.tajawal(
+                                                fontSize: 13,
+                                                color: Colors.black87,
                                               ),
                                             ),
                                           ],

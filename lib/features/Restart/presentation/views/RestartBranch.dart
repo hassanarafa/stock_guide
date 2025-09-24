@@ -227,17 +227,11 @@ class _RestartBranchState extends State<RestartBranch> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: buildToggleButton("اعادة تشغيل دائم", false),
-                        ),
+                        child: buildToggleButton("اعادة تشغيل دائم", false),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: buildToggleButton("اعادة تشغيل مؤقت", true),
-                        ),
+                        child: buildToggleButton("اعادة تشغيل مؤقت", true),
                       ),
                     ],
                   ),
@@ -329,11 +323,17 @@ class _RestartBranchState extends State<RestartBranch> {
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: isSelected ? Colors.lightBlue : Colors.white,
-          side: BorderSide(color: Colors.lightBlue),
+          side: const BorderSide(color: Colors.lightBlue),
           foregroundColor: isSelected ? Colors.white : Colors.lightBlue,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        child: Text(title, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+        child: Text(
+          title,
+          style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+        ),
       ),
     );
   }

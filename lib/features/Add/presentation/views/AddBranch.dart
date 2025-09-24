@@ -138,7 +138,8 @@ class _AddBranchState extends State<AddBranch> {
       if (response.statusCode == 200) {
         final resBody = jsonDecode(response.body);
         print(response.body);
-        if (resBody['success'] == true) {
+        print(resBody);
+        if (resBody['status'] == 1) {
           setState(() {
             _branches.removeWhere((branch) => branch['branchId'] == branchId);
             if (_selectedBranch != null &&

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../Renew/presentation/views/RenewNobile.dart';
 
@@ -57,6 +58,39 @@ class _GetMobilesState extends State<GetMobiles> {
     fetchUsers();
   }
 
+  /// دالة الرسائل
+  Future<void> showMessageDialog(String message) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+          content: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(fontSize: 16),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'حسناً',
+                style: GoogleFonts.tajawal(
+                  fontSize: 16,
+                  color: Colors.lightBlue,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<bool> _checkInternet() async {
     try {
       final result = await InternetAddress.lookup('google.com');
@@ -68,9 +102,7 @@ class _GetMobilesState extends State<GetMobiles> {
 
   Future<void> fetchUsers() async {
     if (!await _checkInternet()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ لا يوجد اتصال بالإنترنت")),
-      );
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
       setState(() => isLoading = false);
       return;
     }
@@ -91,7 +123,8 @@ class _GetMobilesState extends State<GetMobiles> {
 
         final allUsers = [...currentUnpaid, ...noActive];
 
-        List<UserModel> loadedUsers = allUsers.map((json) => UserModel.fromJson(json)).toList();
+        List<UserModel> loadedUsers =
+        allUsers.map((json) => UserModel.fromJson(json)).toList();
 
         final settings = await fetchUserFeeSettings();
         for (var user in loadedUsers) {
@@ -125,9 +158,7 @@ class _GetMobilesState extends State<GetMobiles> {
 
   Future<List<Map<String, dynamic>>> fetchUserFeeSettings() async {
     if (!await _checkInternet()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ لا يوجد اتصال بالإنترنت")),
-      );
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
       return [];
     }
 
@@ -154,48 +185,58 @@ class _GetMobilesState extends State<GetMobiles> {
       String mobile,
       ) async {
     if (!await _checkInternet()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ لا يوجد اتصال بالإنترنت")),
-      );
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
       return;
     }
 
     final url = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/User/UpdateUser",
+      "http://197.134.252.181/StockGuideAPI/User/UpdateUserInRenew",
     );
+
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserId = prefs.getString('userId');
+
+    if (currentUserId == null || currentUserId.isEmpty) {
+      await showMessageDialog('فشل في جلب معرف المستخدم');
+      return;
+    }
 
     final body = {
       "companyId": widget.companyId,
       "userId": user.userId,
-      "updatedByUserId": "admin",
+      "updatedByUserId": currentUserId,
       "userName": name,
       "mobileNo": mobile,
+      "noMonth": user.noMonths ?? 0,
+      "fees": user.fees ?? 0,
     };
 
     try {
-      final response = await http.post(
+      final response = await http.put(
         url,
         headers: {"Content-Type": "application/json"},
         body: json.encode(body),
       );
 
+      print("📡 UpdateUserInRenew Status: ${response.statusCode}");
+      print("Response body: ${response.body}");
+
       if (response.statusCode == 200) {
-        Navigator.of(context).pop();
-        fetchUsers();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ تم تعديل بيانات المستخدم بنجاح")),
-        );
+        final decoded = json.decode(response.body);
+
+        if (decoded["status"] == 1) {
+          Navigator.of(context).pop();
+          fetchUsers();
+          await showMessageDialog("✅ ${decoded["message"]}");
+        } else {
+          await showMessageDialog("⚠️ ${decoded["message"]}");
+        }
       } else {
-        print("Update failed: ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ فشل التعديل")),
-        );
+        await showMessageDialog("❌ فشل الاتصال بالسيرفر (${response.statusCode})");
       }
     } catch (e) {
       print("Error updating user: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ حدث خطأ أثناء التعديل")),
-      );
+      await showMessageDialog("⚠️ حدث خطأ أثناء التعديل");
     }
   }
 
@@ -234,22 +275,16 @@ class _GetMobilesState extends State<GetMobiles> {
                 final mobile = mobileController.text.trim();
 
                 if (name.isEmpty || mobile.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("⚠️ يجب ملء جميع الحقول")),
-                  );
+                  showMessageDialog("⚠️ يجب ملء جميع الحقول");
                   return;
                 }
 
                 final duplicate = users.any((u) =>
-                u.userId != user.userId && (u.name == name || u.mobile == mobile));
+                u.userId != user.userId &&
+                    (u.name == name || u.mobile == mobile));
 
                 if (duplicate) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("⚠️ الاسم أو رقم الموبايل مستخدم بالفعل"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  showMessageDialog("⚠️ الاسم أو رقم الموبايل مستخدم بالفعل");
                   return;
                 }
 
@@ -308,7 +343,8 @@ class _GetMobilesState extends State<GetMobiles> {
                             children: [
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       user.name,
@@ -325,18 +361,26 @@ class _GetMobilesState extends State<GetMobiles> {
                                         color: Colors.grey[600],
                                       ),
                                     ),
-                                    if (user.noMonths != null && user.fees != null) ...[
+                                    if (user.noMonths != null &&
+                                        user.fees != null) ...[
                                       const SizedBox(height: 8),
                                       Text(
                                         "📅 عدد الشهور: ${user.noMonths}",
-                                        style: GoogleFonts.tajawal(fontSize: 16, color: Colors.black87),
+                                        style: GoogleFonts.tajawal(
+                                          fontSize: 16,
+                                          color: Colors.black87,
+                                        ),
                                       ),
                                       Text(
                                         "💰 الرسوم: ${user.fees} ج.م",
-                                        style: GoogleFonts.tajawal(fontSize: 16, color: Colors.black87),
+                                        style: GoogleFonts.tajawal(
+                                          fontSize: 16,
+                                          color: Colors.black87,
+                                        ),
                                       ),
                                     ],
-                                    if (user.currentSubscribtion != null) ...[
+                                    if (user.currentSubscribtion !=
+                                        null) ...[
                                       const SizedBox(height: 6),
                                       Text(
                                         user.currentSubscribtion!,
@@ -395,8 +439,8 @@ class _GetMobilesState extends State<GetMobiles> {
                                       borderRadius:
                                       BorderRadius.circular(12),
                                     ),
-                                    padding:
-                                    const EdgeInsets.symmetric(
+                                    padding: const EdgeInsets
+                                        .symmetric(
                                       horizontal: 16,
                                       vertical: 8,
                                     ),
