@@ -25,6 +25,8 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
   final TextEditingController confirmController = TextEditingController();
 
   bool isLoading = false;
+  bool _isPasswordVisible = false;
+  bool _isPasswordVisibleRepeat = false;
 
   Future<void> resetPassword() async {
     final newPassword = passwordController.text.trim();
@@ -126,20 +128,43 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Confirm password
                   TextField(
                     controller: confirmController,
-                    obscureText: true,
+                    obscureText: !_isPasswordVisibleRepeat,
                     decoration: InputDecoration(
                       hintText: 'تأكيد كلمة المرور',
                       hintStyle: GoogleFonts.tajawal(),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisibleRepeat
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisibleRepeat = !_isPasswordVisibleRepeat;
+                          });
+                        },
                       ),
                     ),
                   ),

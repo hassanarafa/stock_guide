@@ -67,6 +67,10 @@ class _AddMobileState extends State<AddMobile> {
   String? _editingUserId;
 
   Future<bool> checkIfUserExists(String mobile, int companyId) async {
+    if (!await _checkInternet()) {
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      return false;
+    }
     try {
       final response = await http.get(
         Uri.parse(
@@ -130,6 +134,10 @@ class _AddMobileState extends State<AddMobile> {
   }
 
   Future<void> fetchUnpaidUsers(int companyId) async {
+    if (!await _checkInternet()) {
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      return;
+    }
     try {
       final response = await http.get(
         Uri.parse(
@@ -186,6 +194,10 @@ class _AddMobileState extends State<AddMobile> {
   }
 
   Future<void> deleteUser(String userId, int companyId) async {
+    if (!await _checkInternet()) {
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final deletedByUserId = prefs.getString('userId');
 
@@ -258,7 +270,21 @@ class _AddMobileState extends State<AddMobile> {
     }
   }
 
+  Future<bool> _checkInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    }
+  }
+
   Future<void> fetchFeeSettings() async {
+    if (!await _checkInternet()) {
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      setState(() => _isLoadingFees = false);
+      return;
+    }
     try {
       final response = await http.get(
         Uri.parse(
@@ -295,6 +321,11 @@ class _AddMobileState extends State<AddMobile> {
   }
 
   Future<void> _uploadReceipt() async {
+    if (!await _checkInternet()) {
+      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      return;
+    }
+
     final selectedUsers = _users.where((u) => u['checked'] == true).toList();
 
     if (selectedUsers.isEmpty) {
@@ -304,7 +335,6 @@ class _AddMobileState extends State<AddMobile> {
 
     File? file;
 
-    // ✅ اسأل المستخدم عايز يرفع ملف ولا يستخدم الكاميرا
     final choice = await showDialog<String>(
       context: context,
       builder: (ctx) {
@@ -482,22 +512,24 @@ class _AddMobileState extends State<AddMobile> {
               onPressed: () async {
                 await _uploadReceipt();
               },
-              label: Text(
-                'ارفاق ايصال الدفع',
-                style: GoogleFonts.tajawal(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              label: Text(
+                'ارفاق ايصال الدفع',
+                style: GoogleFonts.tajawal(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -515,7 +547,6 @@ class _AddMobileState extends State<AddMobile> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Title
                       Center(
                         child: Text(
                           'الفروع التابعة لـ: ${widget.companyName}',
@@ -528,47 +559,61 @@ class _AddMobileState extends State<AddMobile> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Name field
                       TextField(
                         controller: nameController,
+                        style: GoogleFonts.tajawal(fontSize: 14),
                         decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           hintText: 'الاسم',
-                          hintStyle: GoogleFonts.tajawal(),
+                          hintStyle: GoogleFonts.tajawal(fontSize: 14),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
-                      // Phone field
                       TextField(
                         controller: phoneController,
                         keyboardType: TextInputType.phone,
+                        style: GoogleFonts.tajawal(fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: 'رقم الهاتف',
-                          hintStyle: GoogleFonts.tajawal(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          hintText: 'رقم الموبايل',
+                          hintStyle: GoogleFonts.tajawal(fontSize: 14),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
                       TextField(
                         controller: passwordController,
-                        obscureText: !_isPasswordVisible, // ⬅️ يعكس القيمة
+                        obscureText: !_isPasswordVisible,
+                        style: GoogleFonts.tajawal(fontSize: 14),
                         decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           hintText: 'كلمة المرور',
-                          hintStyle: GoogleFonts.tajawal(),
+                          hintStyle: GoogleFonts.tajawal(fontSize: 14),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isPasswordVisible
                                   ? Icons.visibility
                                   : Icons.visibility_off,
+                              size: 18,
                             ),
                             onPressed: () {
                               setState(() {
@@ -578,10 +623,8 @@ class _AddMobileState extends State<AddMobile> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 15),
 
-                      const SizedBox(height: 20),
-
-                      // Fee options
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: _feeOptions.map((option) {
@@ -597,10 +640,10 @@ class _AddMobileState extends State<AddMobile> {
                               },
                               child: Container(
                                 margin: const EdgeInsets.symmetric(
-                                  horizontal: 4,
+                                  horizontal: 3,
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
+                                  vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSelected
@@ -610,16 +653,16 @@ class _AddMobileState extends State<AddMobile> {
                                     color: isSelected
                                         ? Colors.blue
                                         : Colors.grey.shade400,
-                                    width: 1.5,
+                                    width: 1,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(
                                       label,
                                       style: GoogleFonts.tajawal(
-                                        fontSize: 16,
+                                        fontSize: 13,
                                         fontWeight: isSelected
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -631,7 +674,7 @@ class _AddMobileState extends State<AddMobile> {
                                     Text(
                                       price,
                                       style: GoogleFonts.tajawal(
-                                        fontSize: 14,
+                                        fontSize: 12,
                                         color: isSelected
                                             ? Colors.blue
                                             : Colors.black,
@@ -644,34 +687,30 @@ class _AddMobileState extends State<AddMobile> {
                           );
                         }).toList(),
                       ),
+                      const SizedBox(height: 18),
 
-                      const SizedBox(height: 25),
-
-                      // Checkboxes
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Column(
-                          children: [
-                            CheckboxListTile(
-                              value: _agreeToTerms,
-                              onChanged: (val) =>
-                                  setState(() => _agreeToTerms = val ?? false),
-                              title: Text(
-                                'يسمح له بانشاء فرع',
-                                style: GoogleFonts.tajawal(fontSize: 18),
-                              ),
-                            ),
-                            CheckboxListTile(
-                              value: _agreeToPrivacy,
-                              onChanged: (val) => setState(
-                                () => _agreeToPrivacy = val ?? false,
-                              ),
-                              title: Text(
-                                'يسمح له بانشاء موبايل',
-                                style: GoogleFonts.tajawal(fontSize: 18),
-                              ),
-                            ),
-                          ],
+                      CheckboxListTile(
+                        value: _agreeToTerms,
+                        onChanged: (val) =>
+                            setState(() => _agreeToTerms = val ?? false),
+                        dense: true,
+                        activeColor: Colors.blue,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          'يسمح له بانشاء فرع',
+                          style: GoogleFonts.tajawal(fontSize: 14),
+                        ),
+                      ),
+                      CheckboxListTile(
+                        value: _agreeToPrivacy,
+                        onChanged: (val) =>
+                            setState(() => _agreeToPrivacy = val ?? false),
+                        dense: true,
+                        activeColor: Colors.blue,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          'يسمح له بانشاء موبايل',
+                          style: GoogleFonts.tajawal(fontSize: 14),
                         ),
                       ),
 
@@ -679,20 +718,21 @@ class _AddMobileState extends State<AddMobile> {
 
                       ElevatedButton(
                         onPressed: () async {
+                          if (!await _checkInternet()) {
+                            await showMessageDialog(
+                              "⚠️ لا يوجد اتصال بالإنترنت",
+                            );
+                            return;
+                          }
                           final name = nameController.text.trim();
                           final mobile = phoneController.text.trim();
                           final password = passwordController.text.trim();
 
-                          final fullName = nameController.text.trim();
-                          final firstPart = fullName.contains('-')
-                              ? fullName.split('-').first.trim()
-                              : fullName;
-
-                          if (firstPart.isEmpty ||
+                          if (name.isEmpty ||
                               mobile.isEmpty ||
                               password.isEmpty) {
                             await showMessageDialog(
-                              'من فضلك ادخل الاسم ورقم الهاتف وكلمة المرور',
+                              'من فضلك ادخل الاسم ورقم الموبايل وكلمة المرور',
                             );
                             return;
                           }
@@ -705,12 +745,11 @@ class _AddMobileState extends State<AddMobile> {
                             return;
                           }
 
-                          // ✅ جسم الطلب
                           final Map<String, dynamic> body = {
                             "companyId": widget.companyId,
                             "userId": _isEditing ? _editingUserId : "",
                             "updatedByUserId": currentUserId,
-                            "userName": firstPart,
+                            "userName": name,
                             "mobileNo": mobile,
                             "noMonth": _selectedFee?.noMonths ?? 0,
                             "fees": _selectedFee?.fees ?? 0,
@@ -760,7 +799,7 @@ class _AddMobileState extends State<AddMobile> {
                                       (u) => u['userId'] == _editingUserId,
                                     );
                                     if (index != -1) {
-                                      _users[index]['name'] = "$name - $mobile";
+                                      _users[index]['name'] = name;
                                       _users[index]['mobile'] = mobile;
                                       _users[index]['noMonth'] =
                                           _selectedFee?.noMonths ?? 0;
@@ -778,7 +817,7 @@ class _AddMobileState extends State<AddMobile> {
                                     _users.add({
                                       'userId':
                                           resBody['data']?['userId'] ?? "",
-                                      'name': "$name - $mobile",
+                                      'name': name,
                                       'mobile': mobile,
                                       'password': password,
                                       'amount':
@@ -814,109 +853,232 @@ class _AddMobileState extends State<AddMobile> {
                           backgroundColor: _isEditing
                               ? Colors.orange
                               : Colors.blue,
-                          minimumSize: const Size.fromHeight(55),
+                          minimumSize: const Size.fromHeight(42),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                         child: Text(
                           _isEditing ? 'تحديث' : 'إضافة',
                           style: GoogleFonts.tajawal(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 20,
+                            fontSize: 16,
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 30),
-
-                      // User list
-                      ..._users.map((branch) {
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: ListTile(
-                              leading: Checkbox(
-                                value: branch['checked'] ?? false,
-                                onChanged: (val) => setState(
-                                  () => branch['checked'] = val ?? false,
-                                ),
+                      if (_isEditing) ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setState(() {
+                                _isEditing = false;
+                                _editingUserId = null;
+                                nameController.clear();
+                                phoneController.clear();
+                                passwordController.clear();
+                                _selectedFee = _feeOptions.isNotEmpty
+                                    ? _feeOptions.first
+                                    : null;
+                                _agreeToTerms = false;
+                                _agreeToPrivacy = false;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.grey.shade400),
+                              minimumSize: const Size.fromHeight(40),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              title: Text(
-                                branch['name']!,
-                                style: GoogleFonts.tajawal(
-                                  fontWeight: FontWeight.bold,
-                                  color: primaryColor,
-                                ),
-                              ),
-                              subtitle: Text(
-                                branch['amount']!,
-                                style: GoogleFonts.tajawal(),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Colors.blueAccent,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _isEditing = true;
-                                        _editingUserId =
-                                            branch['userId']; // حفظ الـ userId
-                                        final fullName = branch['name'] ?? '';
-                                        final firstPart = fullName.contains('-')
-                                            ? fullName.split('-').first.trim()
-                                            : fullName;
-
-                                        nameController.text = firstPart;
-                                        phoneController.text =
-                                            branch['mobile'] ?? '';
-                                        passwordController.text =
-                                            branch['password'] ?? '';
-
-                                        _selectedFee = _feeOptions.firstWhere(
-                                          (f) => f.noMonths == branch['noMonth'],
-                                          orElse: () => _feeOptions.first,
-                                        );
-
-                                        _agreeToTerms =
-                                            branch['hasRightToInsertBranch'] ??
-                                            false;
-                                        _agreeToPrivacy =
-                                            branch['hasRightToInsertUsers'] ??
-                                            false;
-                                      });
-
-                                      _scrollController.animateTo(
-                                        0,
-                                        duration: const Duration(
-                                          milliseconds: 500,
-                                        ),
-                                        curve: Curves.easeInOut,
-                                      );
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () => deleteUser(
-                                      branch['userId'],
-                                      widget.companyId,
-                                    ),
-                                  ),
-                                ],
+                            ),
+                            child: Text(
+                              'إنهاء التعديل',
+                              style: GoogleFonts.tajawal(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
                               ),
                             ),
                           ),
-                        );
-                      }),
+                        ),
+                      ],
+
+                      const SizedBox(height: 30),
+
+                      Column(
+                        children: [
+                          ..._users.map((user) {
+                            return Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Checkbox(
+                                        value: user['checked'] ?? false,
+                                        activeColor: Colors.blue,
+                                        onChanged: (bool? value) {
+                                          setState(() {
+                                            user['checked'] = value ?? false;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              user['name'] ?? '',
+                                              style: GoogleFonts.tajawal(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w600,
+                                                color: primaryColor,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              user['mobile'] ?? '',
+                                              style: GoogleFonts.tajawal(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: Colors.blueAccent,
+                                          size: 22,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _isEditing = true;
+                                            _editingUserId =
+                                                user['userId']; // حفظ userId
+
+                                            nameController.text =
+                                                user['name'] ?? '';
+                                            phoneController.text =
+                                                user['mobile'] ?? '';
+                                            passwordController.text =
+                                                user['password'] ?? '';
+
+                                            _selectedFee = _feeOptions
+                                                .firstWhere(
+                                                  (f) =>
+                                                      f.noMonths ==
+                                                      user['noMonth'],
+                                                  orElse: () =>
+                                                      _feeOptions.first,
+                                                );
+
+                                            _agreeToTerms =
+                                                user['hasRightToInsertBranch'] ??
+                                                false;
+                                            _agreeToPrivacy =
+                                                user['hasRightToInsertUsers'] ??
+                                                false;
+                                          });
+
+                                          _scrollController.animateTo(
+                                            0,
+                                            duration: const Duration(
+                                              milliseconds: 500,
+                                            ),
+                                            curve: Curves.easeInOut,
+                                          );
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.redAccent,
+                                          size: 22,
+                                        ),
+                                        onPressed: () async {
+                                          bool?
+                                          confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) {
+                                              return AlertDialog(
+                                                title: Text(
+                                                  "تأكيد الحذف",
+                                                  style: GoogleFonts.tajawal(),
+                                                ),
+                                                content: Text(
+                                                  "هل تريد حذف المستخدم (${user['name']})؟",
+                                                  style: GoogleFonts.tajawal(),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          ctx,
+                                                          false,
+                                                        ),
+                                                    child: Text(
+                                                      "إلغاء",
+                                                      style:
+                                                          GoogleFonts.tajawal(
+                                                            color: Colors.grey,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  ElevatedButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          ctx,
+                                                          true,
+                                                        ),
+                                                    style:
+                                                        ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                    child: Text(
+                                                      "حذف",
+                                                      style:
+                                                          GoogleFonts.tajawal(
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+
+                                          if (confirm == true) {
+                                            await deleteUser(
+                                              user['userId'],
+                                              widget.companyId,
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Divider(
+                                  color: Colors.grey.shade300,
+                                  thickness: 1,
+                                  height: 1,
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ],
+                      ),
                       const SizedBox(height: 90),
                     ],
                   ),

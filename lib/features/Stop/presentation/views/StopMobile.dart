@@ -29,7 +29,7 @@
 
     Future<void> fetchBranches() async {
       final url = Uri.parse(
-          'http://197.134.252.181/StockGuideAPI/User/UserGetAllByCompanyIdWithStatus?companyId=${widget.companyId}');
+          'http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=${widget.companyId}');
 
       final response = await http.get(url);
 
@@ -38,19 +38,30 @@
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
 
-        if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
-          final List<dynamic> data = decoded['data'];
+        if (decoded is Map<String, dynamic> &&
+            decoded.containsKey('data') &&
+            decoded['data'] is Map<String, dynamic>) {
+
+          final data = decoded['data'];
+
+          final List<dynamic> users = data['currentUnpaidSubscription'] ?? [];
 
           setState(() {
-            mobiles = data
-                .where((item) => item['statusId'] == 1)
-                .map<Map<String, dynamic>>((item) {
+            mobiles = users.map<Map<String, dynamic>>((item) {
+              final displayName = item['displayName']?.toString() ?? "";
+              final mobileNo = item['mobile']?.toString() ?? "";
+
               return {
                 'id': item['userId'],
-                'name': item['mobileNO'],
-                'statusId': item['statusId'],
+                'name': "$displayName - $mobileNo",
+                'mobile': item['mobile'],
+                'fees': item['fees'],
+                'noMonth': item['noMonth'],
+                'isPaid': item['isPaid'],
+                'subscription': item['currentSubscribtion'],
               };
             }).toList();
+
             isLoading = false;
           });
         } else {
@@ -112,7 +123,7 @@
 
     Future<void> editUserStatus() async {
       if (_selectedMobile == null) {
-        await showMessageDialog("برجاء اختيار رقم الهاتف");
+        await showMessageDialog("برجاء اختيار رقم الموبايل");
         return;
       }
 
@@ -139,22 +150,19 @@
         }
       }
 
-      // find the selected mobile's userId
       final selectedUser = mobiles.firstWhere(
             (m) => m["name"] == _selectedMobile,
         orElse: () => {},
       );
 
-      print("/*/*");
-      print(selectedUser);
       final String selectedUserId = selectedUser["id"].toString();
 
       final body = json.encode({
-        "userId": selectedUserId,        // 👈 required by API
-        "companyId": widget.companyId,   // 👈 required by API
+        "userId": selectedUserId,
+        "companyId": widget.companyId,
         "newStatusId": newStatusId,
         "toStatusDate": toStatusDate ?? "",
-        "fromUserId": widget.userId,     // 👈 logged-in user
+        "fromUserId": widget.userId,
       });
 
       final response = await http.post(
@@ -164,9 +172,9 @@
       );
 
       if (response.statusCode == 200) {
-        await showMessageDialog('✅ تم تغيير حالة الهاتف بنجاح');
+        await showMessageDialog('✅ تم تغيير حالة الموبايل بنجاح');
       } else {
-        await showMessageDialog('❌ فشل في تغيير حالة الهاتف');
+        await showMessageDialog('❌ فشل في تغيير حالة الموبايل');
       }
     }
 
@@ -183,7 +191,7 @@
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'إيقاف هاتف',
+                    'إيقاف موبايل',
                     style: GoogleFonts.tajawal(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -192,7 +200,6 @@
                   ),
                   const SizedBox(height: 20),
 
-                  // Dropdown
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Container(
@@ -204,7 +211,7 @@
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: DropdownButton<String>(
-                            hint: const Text('اختر الهاتف'),
+                            hint: const Text('اختر الموبايل'),
                             value: _selectedMobile,
                             icon: const Icon(Icons.arrow_drop_down),
                             isExpanded: true,
@@ -230,7 +237,6 @@
 
                   const SizedBox(height: 20),
 
-                  // Stop type toggle buttons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -286,7 +292,6 @@
 
                   const SizedBox(height: 15),
 
-                  // Submit button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: SizedBox(

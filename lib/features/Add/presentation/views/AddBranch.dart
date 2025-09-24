@@ -14,7 +14,7 @@ class BranchFeeSetting {
   final int id;
   final int branchId;
   final int noMonths;
-  final double fees;
+  final int fees;
 
   BranchFeeSetting({
     required this.id,
@@ -28,7 +28,7 @@ class BranchFeeSetting {
       id: json['id'] ?? 0,
       branchId: json['branchId'] ?? 0,
       noMonths: json['noMonths'] ?? 0,
-      fees: json['fees'].toDouble(),
+      fees: json['fees'].toInt(),
     );
   }
 }
@@ -75,6 +75,15 @@ class _AddBranchState extends State<AddBranch> {
     super.dispose();
   }
 
+  Future<bool> _checkInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    }
+  }
+
   Future<void> showMessageDialog(String message) async {
     await showDialog(
       context: context,
@@ -108,6 +117,10 @@ class _AddBranchState extends State<AddBranch> {
   }
 
   Future<void> deleteBranch(int branchId, int companyId, String userId) async {
+    if (!await _checkInternet()) {
+      showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      return;
+    }
     try {
       final response = await http.delete(
         Uri.parse("http://197.134.252.181/StockGuideAPI/Branch/DeleteBranch"),
@@ -146,6 +159,11 @@ class _AddBranchState extends State<AddBranch> {
   }
 
   Future<void> fetchFeeSettings() async {
+    if (!await _checkInternet()) {
+      showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      setState(() => _isLoadingFees = false);
+      return;
+    }
     try {
       final response = await http.get(
         Uri.parse(
@@ -316,6 +334,10 @@ class _AddBranchState extends State<AddBranch> {
     );
 
     try {
+      if (!await _checkInternet()) {
+        showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+        return;
+      }
       var response = await request.send();
       Navigator.of(context).pop();
 
@@ -335,6 +357,10 @@ class _AddBranchState extends State<AddBranch> {
   }
 
   Future<void> fetchUnpaidBranches(int companyId) async {
+    if (!await _checkInternet()) {
+      showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
+      return;
+    }
     try {
       final response = await http.get(
         Uri.parse(
@@ -367,9 +393,12 @@ class _AddBranchState extends State<AddBranch> {
               "branchId": branch['branchId'],
               'name': branch['branchName'],
               'amount': '${branch['fees']} ج.م',
+              'fees': branch['fees'],
+              'onMonths': branch['noMonth'],
               'checked': false,
             });
           }
+          print(_branches);
         });
       } else {
         showMessageDialog("فشل في تحميل الفروع غير المدفوعة");
@@ -383,9 +412,7 @@ class _AddBranchState extends State<AddBranch> {
     int total = 0;
     for (var branch in _branches) {
       if (branch['checked'] == true) {
-        final amount = branch['amount'].toString().replaceAll("ج.م", "").trim();
-
-        total += int.tryParse(amount) ?? 0;
+        total += (branch['fees'] as num).toInt();
       }
     }
     return total;
@@ -422,15 +449,24 @@ class _AddBranchState extends State<AddBranch> {
                       TextField(
                         controller: branchController,
                         keyboardType: TextInputType.text,
+                        style: GoogleFonts.tajawal(
+                          fontSize: 14,
+                        ), // smaller text
                         decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 12,
+                          ), // reduced padding
                           hintText: 'اسم الفرع',
-                          hintStyle: GoogleFonts.tajawal(),
+                          hintStyle: GoogleFonts.tajawal(fontSize: 14),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              8,
+                            ), // smaller shape
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 15),
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -447,10 +483,11 @@ class _AddBranchState extends State<AddBranch> {
                               },
                               child: Container(
                                 margin: const EdgeInsets.symmetric(
-                                  horizontal: 4,
+                                  horizontal: 3,
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
+                                  vertical: 8,
+                                  horizontal: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSelected
@@ -460,16 +497,16 @@ class _AddBranchState extends State<AddBranch> {
                                     color: isSelected
                                         ? Colors.blue
                                         : Colors.grey.shade400,
-                                    width: 1.5,
+                                    width: 1.2,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(
                                       label,
                                       style: GoogleFonts.tajawal(
-                                        fontSize: 16,
+                                        fontSize: 13, // smaller font
                                         fontWeight: isSelected
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -481,7 +518,7 @@ class _AddBranchState extends State<AddBranch> {
                                     Text(
                                       price,
                                       style: GoogleFonts.tajawal(
-                                        fontSize: 14,
+                                        fontSize: 12, // smaller font
                                         color: isSelected
                                             ? Colors.blue
                                             : Colors.black,
@@ -497,329 +534,445 @@ class _AddBranchState extends State<AddBranch> {
 
                       const SizedBox(height: 25),
 
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final name = branchController.text.trim();
+                      Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                final name = branchController.text.trim();
 
-                            if (name.isEmpty) {
-                              showMessageDialog('يرجى إدخال اسم الفرع');
-                              return;
-                            }
+                                if (name.isEmpty) {
+                                  showMessageDialog('يرجى إدخال اسم الفرع');
+                                  return;
+                                }
 
-                            final prefs = await SharedPreferences.getInstance();
-                            final userId = prefs.getString('userId');
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                final userId = prefs.getString('userId');
 
-                            if (userId == null || userId.isEmpty) {
-                              showMessageDialog('فشل في جلب معرف المستخدم');
-                              return;
-                            }
+                                if (userId == null || userId.isEmpty) {
+                                  showMessageDialog('فشل في جلب معرف المستخدم');
+                                  return;
+                                }
 
-                            if (_editingBranch != null) {
-                              // ✅ تعديل فرع موجود
-                              final body = {
-                                "branchId": _editingBranch!['branchId'],
-                                "branchName": name,
-                                "companyId": widget.companyId,
-                                "userId": userId,
-                                "noMonth": _selectedFee?.noMonths ?? 0,
-                                "fees": _selectedFee?.fees ?? 0,
-                              };
+                                print("/*/*/*/*/*/**");
+                                print(_editingBranch);
+                                print("/*/*/*/*/*/**");
 
-                              try {
-                                final response = await http.put(
-                                  Uri.parse(
-                                    "http://197.134.252.181/StockGuideAPI/Branch/UpdateBranchInRenew",
-                                  ),
-                                  headers: {"Content-Type": "application/json"},
-                                  body: jsonEncode(body),
+                                if (_editingBranch != null) {
+                                  final body = {
+                                    "branchId": _editingBranch!['id'],
+                                    "branchName": name,
+                                    "companyId": widget.companyId,
+                                    "userId": userId,
+                                    "noMonth": _selectedFee?.noMonths ?? 0,
+                                    "fees": _selectedFee?.fees ?? 0,
+                                  };
+
+                                  print(body);
+
+                                  try {
+                                    final response = await http.put(
+                                      Uri.parse(
+                                        "http://197.134.252.181/StockGuideAPI/Branch/UpdateBranchInRenew",
+                                      ),
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: jsonEncode(body),
+                                    );
+
+                                    print(response.body);
+
+                                    if (response.statusCode == 200) {
+                                      final responseData = jsonDecode(
+                                        response.body,
+                                      );
+
+                                      if (responseData['status'] == 1) {
+                                        setState(() {
+                                          _editingBranch!['name'] = name;
+                                          _editingBranch!['amount'] =
+                                              '${_selectedFee?.fees.toInt() ?? 0} ج.م';
+                                        });
+
+                                        _editingBranch = null;
+                                        branchController.clear();
+                                        _selectedFee = _feeOptions.first;
+
+                                        showMessageDialog(
+                                          'تم تعديل الفرع بنجاح ✅',
+                                        );
+                                      } else {
+                                        showMessageDialog(
+                                          "❌ ${responseData['message'] ?? 'فشل تعديل الفرع'}",
+                                        );
+                                      }
+                                    } else {
+                                      showMessageDialog(
+                                        'فشل تعديل الفرع ❌ (كود: ${response.statusCode})',
+                                      );
+                                    }
+                                  } catch (e) {
+                                    showMessageDialog(
+                                      'حدث خطأ أثناء تعديل الفرع: $e',
+                                    );
+                                  }
+
+                                  return;
+                                }
+
+                                final existingBranches =
+                                    await fetchExistingBranches(
+                                      widget.companyId,
+                                    );
+
+                                if (existingBranches.contains(
+                                  name.toLowerCase(),
+                                )) {
+                                  showMessageDialog(
+                                    'هذا الفرع موجود بالفعل في قاعدة البيانات ❌',
+                                  );
+                                  return;
+                                }
+
+                                bool alreadyExistsLocally = _branches.any(
+                                  (branch) =>
+                                      branch['name'].toString().toLowerCase() ==
+                                      name.toLowerCase(),
                                 );
 
-                                print(body);
-
-                                if (response.statusCode == 200) {
-                                  setState(() {
-                                    _editingBranch!['name'] = name;
-                                    _editingBranch!['amount'] =
-                                        '${_selectedFee?.fees.toInt() ?? 0} ج.م';
-                                  });
-
-                                  _editingBranch = null;
-                                  branchController.clear();
-                                  _selectedFee = _feeOptions.first;
-
-                                  showMessageDialog('تم تعديل الفرع بنجاح ✅');
-                                } else {
+                                if (alreadyExistsLocally) {
                                   showMessageDialog(
-                                    'فشل تعديل الفرع ❌ (كود: ${response.statusCode})',
+                                    'هذا الفرع موجود بالفعل محليًا ❌',
+                                  );
+                                  return;
+                                }
+
+                                final body = {
+                                  "branchName": name,
+                                  "companyId": widget.companyId,
+                                  "userId": userId,
+                                  "noMonth": _selectedFee?.noMonths ?? 0,
+                                  "fees": _selectedFee?.fees ?? 0,
+                                };
+
+                                if (!await _checkInternet()) {
+                                  showMessageDialog(
+                                    "⚠️ لا يوجد اتصال بالإنترنت",
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  final response = await http.post(
+                                    Uri.parse(
+                                      "http://197.134.252.181/StockGuideAPI/Branch/CreateBranchForTheFirstTime",
+                                    ),
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: jsonEncode(body),
+                                  );
+
+                                  print("///////////////");
+                                  print(response.body);
+                                  print("///////////////");
+
+                                  if (response.statusCode == 200 ||
+                                      response.statusCode == 201) {
+                                    final responseData = jsonDecode(
+                                      response.body,
+                                    );
+
+                                    if (responseData['status'] == 1 &&
+                                        responseData['data'] != null) {
+
+                                      final branchId =
+                                          responseData['data']['branchId'];
+
+                                      setState(() {
+                                        _branches.add({
+                                          'id': branchId,
+                                          'name': name,
+                                          'fees':
+                                              _selectedFee?.fees?.toInt() ?? 0,
+                                          'amount':
+                                              '${_selectedFee?.fees?.toInt() ?? 0} ج.م',
+                                          'onMonths':
+                                              _selectedFee?.noMonths ?? 0,
+                                          'checked': true,
+                                        });
+                                        _selectedBranch = _branches.last;
+                                        branchController.clear();
+                                        _selectedFee = _feeOptions.first;
+                                      });
+
+                                      showMessageDialog(
+                                        'تمت إضافة الفرع بنجاح ✅',
+                                      );
+                                    } else {
+                                      showMessageDialog(
+                                        "❌ فشل الإضافة: ${responseData['message'] ?? "حدث خطأ"}",
+                                      );
+                                    }
+                                  } else {
+                                    showMessageDialog(
+                                      'فشل في إضافة الفرع ❌ (كود: ${response.statusCode})',
+                                    );
+                                  }
+                                } catch (e) {
+                                  print(e);
+                                  showMessageDialog(
+                                    'حدث خطأ أثناء إضافة الفرع: $e',
                                   );
                                 }
-                              } catch (e) {
-                                showMessageDialog(
-                                  'حدث خطأ أثناء تعديل الفرع: $e',
-                                );
-                              }
-
-                              return;
-                            }
-
-                            // ✅ إضافة فرع جديد (الكود القديم لإنشاء فرع)
-                            final existingBranches =
-                                await fetchExistingBranches(widget.companyId);
-
-                            if (existingBranches.contains(name.toLowerCase())) {
-                              showMessageDialog(
-                                'هذا الفرع موجود بالفعل في قاعدة البيانات ❌',
-                              );
-                              return;
-                            }
-
-                            bool alreadyExistsLocally = _branches.any(
-                              (branch) =>
-                                  branch['name'].toString().toLowerCase() ==
-                                  name.toLowerCase(),
-                            );
-
-                            if (alreadyExistsLocally) {
-                              showMessageDialog(
-                                'هذا الفرع موجود بالفعل محليًا ❌',
-                              );
-                              return;
-                            }
-
-                            final body = {
-                              "branchName": name,
-                              "companyId": widget.companyId,
-                              "userId": userId,
-                              "noMonth": _selectedFee?.noMonths ?? 0,
-                              "fees": _selectedFee?.fees ?? 0,
-                            };
-
-                            try {
-                              final response = await http.post(
-                                Uri.parse(
-                                  "http://197.134.252.181/StockGuideAPI/Branch/CreateBranchForTheFirstTime",
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _editingBranch != null
+                                    ? Colors.orange
+                                    : Colors.blue,
+                                minimumSize: const Size.fromHeight(40),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
                                 ),
-                                headers: {"Content-Type": "application/json"},
-                                body: jsonEncode(body),
-                              );
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                _editingBranch != null ? 'تحديث' : 'إضافة',
+                                style: GoogleFonts.tajawal(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
 
-                              print(response.body);
-
-                              if (response.statusCode == 200 ||
-                                  response.statusCode == 201) {
-                                final responseData = jsonDecode(response.body);
-
-                                if (responseData['status'] == 1 &&
-                                    responseData['data'] != null) {
-                                  final branchId =
-                                      responseData['data']['branchSubscribtionId'];
-
+                          // زر إنهاء التعديل
+                          if (_editingBranch != null) ...[
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () {
                                   setState(() {
-                                    _branches.add({
-                                      'id': branchId,
-                                      'name': name,
-                                      'amount':
-                                          '${_selectedFee?.fees?.toInt() ?? 0} ج.م',
-                                      'checked': true,
-                                    });
-                                    _selectedBranch = _branches.last;
+                                    _editingBranch = null;
                                     branchController.clear();
                                     _selectedFee = _feeOptions.first;
                                   });
-
-                                  showMessageDialog('تمت إضافة الفرع بنجاح ✅');
-                                } else {
-                                  showMessageDialog(
-                                    "❌ فشل الإضافة: ${responseData['message'] ?? "حدث خطأ"}",
-                                  );
-                                }
-                              } else {
-                                showMessageDialog(
-                                  'فشل في إضافة الفرع ❌ (كود: ${response.statusCode})',
-                                );
-                              }
-                            } catch (e) {
-                              print(e);
-                              showMessageDialog(
-                                'حدث خطأ أثناء إضافة الفرع: $e',
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            minimumSize: const Size.fromHeight(55),
-                            padding: const EdgeInsets.symmetric(vertical: 17.5),
-                          ),
-                          child: Text(
-                            'اضافة',
-                            style: GoogleFonts.tajawal(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontSize: 15,
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.grey.shade400),
+                                  minimumSize: const Size.fromHeight(40),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  'إنهاء التعديل',
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          ],
+                        ],
                       ),
 
                       const SizedBox(height: 15),
 
-                      ..._branches.map((branch) {
-                        return Card(
-                          elevation: 3,
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 10,
-                            ),
-                            child: Row(
+                      Column(
+                        children: [
+                          ..._branches.map((branch) {
+                            return Column(
                               children: [
-                                Checkbox(
-                                  value: branch['checked'] ?? false,
-                                  activeColor: Colors.blue,
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      branch['checked'] = value ?? false;
-                                      _selectedBranch = branch;
-                                    });
-                                  },
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 8,
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        branch['name']!,
-                                        style: GoogleFonts.tajawal(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: primaryColor,
+                                      Checkbox(
+                                        value: branch['checked'] ?? false,
+                                        activeColor: Colors.blue,
+                                        onChanged: (bool? value) {
+                                          setState(() {
+                                            branch['checked'] = value ?? false;
+                                            _selectedBranch = branch;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              branch['name']!,
+                                              style: GoogleFonts.tajawal(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w600,
+                                                color: primaryColor,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  '${(branch['fees'] as num).toInt()} ج.م',
+                                                  style: GoogleFonts.tajawal(
+                                                    fontSize: 14,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                if (branch['onMonths'] != null)
+                                                  Text(
+                                                    '${branch['onMonths']} شهر',
+                                                    style: GoogleFonts.tajawal(
+                                                      fontSize: 13,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        branch['amount']!,
-                                        style: GoogleFonts.tajawal(
-                                          fontSize: 16,
-                                          color: Colors.grey[700],
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: Colors.blueAccent,
+                                          size: 22,
                                         ),
+                                        onPressed: () {
+                                          setState(() {
+                                            print(branch);
+                                            _editingBranch = branch;
+                                            branchController.text =
+                                                branch['name'];
+
+                                            _selectedFee = _feeOptions.firstWhere(
+                                              (fee) =>
+                                                  '${fee.fees.toInt()} ج.م' ==
+                                                  branch['amount'],
+                                              orElse: () => _feeOptions.first,
+                                            );
+                                          });
+
+                                          _scrollController.animateTo(
+                                            0,
+                                            duration: const Duration(
+                                              milliseconds: 500,
+                                            ),
+                                            curve: Curves.easeInOut,
+                                          );
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.redAccent,
+                                          size: 22,
+                                        ),
+                                        onPressed: () async {
+                                          final prefs =
+                                              await SharedPreferences.getInstance();
+                                          final userId = prefs.getString(
+                                            'userId',
+                                          );
+                                          final companyId = widget.companyId;
+
+                                          if (userId == null) {
+                                            showMessageDialog(
+                                              '⚠️ فشل في جلب بيانات المستخدم',
+                                            );
+                                            return;
+                                          }
+
+                                          bool?
+                                          confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) {
+                                              return AlertDialog(
+                                                title: Text(
+                                                  "تأكيد الحذف",
+                                                  style: GoogleFonts.tajawal(),
+                                                ),
+                                                content: Text(
+                                                  "هل تريد حذف الفرع (${branch['name']})؟",
+                                                  style: GoogleFonts.tajawal(),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          ctx,
+                                                          false,
+                                                        ),
+                                                    child: Text(
+                                                      "إلغاء",
+                                                      style:
+                                                          GoogleFonts.tajawal(
+                                                            color: Colors.grey,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  ElevatedButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          ctx,
+                                                          true,
+                                                        ),
+                                                    style:
+                                                        ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                    child: Text(
+                                                      "حذف",
+                                                      style:
+                                                          GoogleFonts.tajawal(
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+
+                                          if (confirm == true) {
+                                            await deleteBranch(
+                                              branch['branchId'],
+                                              companyId,
+                                              userId,
+                                            );
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blueAccent,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _editingBranch = branch;
-                                      branchController.text = branch['name'];
-
-                                      // اختار الاشتراك اللي يطابق الفرع
-                                      _selectedFee = _feeOptions.firstWhere(
-                                        (fee) =>
-                                            '${fee.fees.toInt()} ج.م' ==
-                                            branch['amount'],
-                                        orElse: () => _feeOptions.first,
-                                      );
-                                    });
-
-                                    // ✅ يعمل scroll to top
-                                    _scrollController.animateTo(
-                                      0,
-                                      duration: const Duration(
-                                        milliseconds: 500,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  },
-                                ),
-
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.redAccent,
-                                  ),
-                                  onPressed: () async {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    final userId = prefs.getString('userId');
-                                    final companyId = widget.companyId;
-
-                                    if (userId == null) {
-                                      showMessageDialog(
-                                        '⚠️ فشل في جلب بيانات المستخدم',
-                                      );
-                                      return;
-                                    }
-
-                                    bool? confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) {
-                                        return AlertDialog(
-                                          title: Text(
-                                            "تأكيد الحذف",
-                                            style: GoogleFonts.tajawal(),
-                                          ),
-                                          content: Text(
-                                            "هل تريد حذف الفرع (${branch['name']})؟",
-                                            style: GoogleFonts.tajawal(),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: Text(
-                                                "إلغاء",
-                                                style: GoogleFonts.tajawal(
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.red,
-                                              ),
-                                              child: Text(
-                                                "حذف",
-                                                style: GoogleFonts.tajawal(
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-
-                                    if (confirm == true) {
-                                      print(branch['branchId']);
-                                      print(companyId);
-                                      print(userId);
-
-                                      await deleteBranch(
-                                        branch['branchId'],
-                                        companyId,
-                                        userId,
-                                      );
-                                    }
-                                  },
+                                Divider(
+                                  color: Colors.grey.shade300,
+                                  thickness: 1,
+                                  height: 1,
                                 ),
                               ],
-                            ),
-                          ),
-                        );
-                      }),
+                            );
+                          }).toList(),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -851,7 +1004,7 @@ class _AddBranchState extends State<AddBranch> {
               ),
             ),
             const SizedBox(width: 8),
-            ElevatedButton.icon(
+            ElevatedButton(
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
                 final userId = prefs.getString('userId');
@@ -863,22 +1016,25 @@ class _AddBranchState extends State<AddBranch> {
 
                 await _uploadReceipt(userId: userId);
               },
-              label: Text(
-                'ارفاق ايصال الدفع',
-                style: GoogleFonts.tajawal(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(8), // less rounded
+                ),
+                minimumSize: const Size(0, 32),
+                tapTargetSize:
+                    MaterialTapTargetSize.shrinkWrap, // remove extra padding
+              ),
+              child: Text(
+                'إرفاق إيصال الدفع',
+                style: GoogleFonts.tajawal(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
                 ),
               ),
             ),

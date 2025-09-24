@@ -83,8 +83,8 @@ class _AddMainLayoutState extends State<AddMainLayout>
                     indicatorPadding: const EdgeInsets.all(2),
                     indicatorSize: TabBarIndicatorSize.tab,
                     tabs: const [
-                      Tab(child: Text("اضافة وتفعيل فرع")),
-                      Tab(child: Text("اضافة وتفعيل موبايل")),
+                      Tab(child: Text("فرع")),
+                      Tab(child: Text("موبايل")),
                     ],
                   ),
                 ),

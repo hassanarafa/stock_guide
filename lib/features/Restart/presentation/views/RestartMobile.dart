@@ -99,7 +99,7 @@ class _RestartMobileState extends State<RestartMobile> {
 
   Future<void> editUserStatus() async {
     if (_selectedMobile == null) {
-      await showMessageDialog("برجاء اختيار رقم الهاتف");
+      await showMessageDialog("برجاء اختيار رقم الموبايل");
       return;
     }
 
@@ -136,11 +136,11 @@ class _RestartMobileState extends State<RestartMobile> {
     final String selectedUserId = selectedUser["id"].toString();
 
     final body = json.encode({
-      "userId": selectedUserId,        // 👈 required by API
-      "companyId": widget.companyId,   // 👈 required by API
+      "userId": selectedUserId,
+      "companyId": widget.companyId,
       "newStatusId": newStatusId,
       "toStatusDate": toStatusDate ?? "",
-      "fromUserId": widget.userId,     // 👈 logged-in user
+      "fromUserId": widget.userId,
     });
 
     final response = await http.post(
@@ -150,9 +150,9 @@ class _RestartMobileState extends State<RestartMobile> {
     );
 
     if (response.statusCode == 200) {
-      await showMessageDialog('✅ تم تغيير حالة الهاتف بنجاح');
+      await showMessageDialog('✅ تم تغيير حالة الموبايل بنجاح');
     } else {
-      await showMessageDialog('❌ فشل في تغيير حالة الهاتف');
+      await showMessageDialog('❌ فشل في تغيير حالة الموبايل');
     }
   }
 
@@ -170,7 +170,7 @@ class _RestartMobileState extends State<RestartMobile> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'اعادة تشغيل هاتف',
+                  'اعادة تشغيل موبايل',
                   style: GoogleFonts.tajawal(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -179,7 +179,6 @@ class _RestartMobileState extends State<RestartMobile> {
                 ),
                 const SizedBox(height: 20),
 
-                // Dropdown for mobiles (users)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
@@ -191,7 +190,7 @@ class _RestartMobileState extends State<RestartMobile> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: DropdownButton<String>(
-                          hint: const Text('اختر الهاتف'),
+                          hint: const Text('اختر الموبايل'),
                           value: _selectedMobile,
                           icon: const Icon(Icons.arrow_drop_down),
                           isExpanded: true,
@@ -216,18 +215,28 @@ class _RestartMobileState extends State<RestartMobile> {
                 ),
 
                 const SizedBox(height: 20),
-                // Stop type toggle buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      buildToggleButton("اعادة تشغيل دائم", false),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: buildToggleButton("اعادة تشغيل دائم", false),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      buildToggleButton("اعادة تشغيل مؤقت", true),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: buildToggleButton("اعادة تشغيل مؤقت", true),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+
 
                 if (isTemporaryStop)
                   Padding(
@@ -283,7 +292,6 @@ class _RestartMobileState extends State<RestartMobile> {
                   ),
                 const SizedBox(height: 15),
 
-                // Submit button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: SizedBox(
@@ -293,7 +301,7 @@ class _RestartMobileState extends State<RestartMobile> {
                       onPressed: () {
                         if (_selectedMobile == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("من فضلك اختر الهاتف")),
+                            SnackBar(content: Text("من فضلك اختر الموبايل")),
                           );
                           return;
                         }

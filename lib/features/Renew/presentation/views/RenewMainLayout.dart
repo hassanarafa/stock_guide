@@ -83,8 +83,8 @@ class _RenewMainLayoutState extends State<RenewMainLayout>
                     indicatorPadding: const EdgeInsets.all(2),
                     indicatorSize: TabBarIndicatorSize.tab,
                     tabs: const [
-                      Tab(child: Text("تجديد فرع")),
-                      Tab(child: Text("تجديد موبايل")),
+                      Tab(child: Text("فرع")),
+                      Tab(child: Text("موبايل")),
                     ],
                   ),
                 ),

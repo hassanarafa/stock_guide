@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../../constants.dart';
@@ -77,6 +78,7 @@ class _RenewMobileState extends State<RenewMobile> {
 
   bool isLoadingMobiles = true;
   bool isLoadingFees = true;
+  bool _canUploadReceipt = false;
 
   @override
   void initState() {
@@ -134,7 +136,6 @@ class _RenewMobileState extends State<RenewMobile> {
             mobiles = loadedMobiles;
             isLoadingMobiles = false;
 
-            // Pick default
             if (widget.mobileName != null && mobiles.isNotEmpty) {
               try {
                 _selectedMobile = mobiles.firstWhere(
@@ -185,30 +186,130 @@ class _RenewMobileState extends State<RenewMobile> {
     }
   }
 
-  Future<void> _uploadReceipt() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
+  Future<void> _uploadReceipt({required String userId}) async {
+    if (_selectedMobile == null) {
+      showMessageDialog("⚠️ يرجى اختيار موبايل أولاً");
+      return;
+    }
 
-    if (result == null) {
+    File? file;
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text("اختيار طريقة الرفع", style: GoogleFonts.tajawal()),
+          content: Text("من فضلك اختر الطريقة:", style: GoogleFonts.tajawal()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, "file"),
+              child: Text("📂 من الملفات", style: GoogleFonts.tajawal()),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, "camera"),
+              child: Text("📸 من الكاميرا", style: GoogleFonts.tajawal()),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (choice == null) return;
+
+    if (choice == "file") {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        file = File(result.files.single.path!);
+      }
+    } else if (choice == "camera") {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        file = File(pickedFile.path);
+      }
+    }
+
+    if (file == null) {
       showMessageDialog("لم يتم اختيار ملف 📄");
       return;
     }
 
-    File file = File(result.files.single.path!);
-    var uri = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionGroupForUsers",
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(
+            "تأكيد رفع الملف",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("هل تريد رفع هذا الملف؟", style: GoogleFonts.tajawal()),
+              const SizedBox(height: 10),
+              Text(
+                "📄 ${file!.path.split('/').last}",
+                style: GoogleFonts.tajawal(),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                "الحجم: ${(file.lengthSync() / 1024).toStringAsFixed(2)} KB",
+                style: GoogleFonts.tajawal(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                "إلغاء",
+                style: GoogleFonts.tajawal(color: Colors.red),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              child: Text(
+                "تأكيد",
+                style: GoogleFonts.tajawal(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
+    if (confirm != true) return;
+
+    final uri = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionGroupForUsers",
+    );
     var request = http.MultipartRequest("POST", uri);
-    request.fields['SubscribtionUserIds'] =
-        _selectedMobile?.userId ?? widget.userId;
+    request.fields['SubscribtionUserIds'] = _selectedMobile?.userId ?? userId;
     request.files.add(await http.MultipartFile.fromPath('File', file.path));
 
-    var response = await request.send();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
 
-    if (response.statusCode == 200) {
-      showMessageDialog("تم رفع الإيصال بنجاح ✅");
-    } else {
-      showMessageDialog("فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
+    try {
+      var response = await request.send();
+      Navigator.of(context).pop();
+
+      if (response.statusCode == 200) {
+        showMessageDialog("تم رفع الإيصال بنجاح ✅");
+        setState(() {
+          _canUploadReceipt = false;
+        });
+      } else {
+        showMessageDialog("فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      showMessageDialog("حدث خطأ أثناء رفع الإيصال: $e");
     }
   }
 
@@ -219,7 +320,7 @@ class _RenewMobileState extends State<RenewMobile> {
     }
 
     final url = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/User/UpdateUser",
+      "http://197.134.252.181/StockGuideAPI/User/UpdateUserInRenew",
     );
 
     final body = {
@@ -240,6 +341,9 @@ class _RenewMobileState extends State<RenewMobile> {
       );
 
       if (response.statusCode == 200) {
+        setState(() {
+          _canUploadReceipt = true;
+        });
         showMessageDialog("تم تجديد الاشتراك بنجاح ✅");
       } else {
         showMessageDialog("فشل التجديد ❌ (كود: ${response.statusCode})");
@@ -266,7 +370,6 @@ class _RenewMobileState extends State<RenewMobile> {
           ),
           const SizedBox(height: 12),
 
-          /// Dropdown or fixed text
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 24),
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -296,7 +399,6 @@ class _RenewMobileState extends State<RenewMobile> {
 
           const SizedBox(height: 20),
 
-          /// Fee options
           isLoadingFees
               ? const Center(child: CircularProgressIndicator())
               : Row(
@@ -354,7 +456,6 @@ class _RenewMobileState extends State<RenewMobile> {
 
           const SizedBox(height: 25),
 
-          /// Total
           Text(
             _selectedFee == null
                 ? "الاجمالي: -"
@@ -369,8 +470,6 @@ class _RenewMobileState extends State<RenewMobile> {
 
           const SizedBox(height: 20),
 
-          /// Buttons
-          /// Buttons
           Row(
             children: [
               Expanded(
@@ -382,7 +481,7 @@ class _RenewMobileState extends State<RenewMobile> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    elevation: 3, // ظل خفيف
+                    elevation: 3,
                   ),
                   child: Text(
                     'تجديد',
@@ -397,21 +496,28 @@ class _RenewMobileState extends State<RenewMobile> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _uploadReceipt,
+                  onPressed: _canUploadReceipt
+                      ? () => _uploadReceipt(userId: widget.userId)
+                      : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: _canUploadReceipt
+                        ? Colors.green
+                        : Colors.grey,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                     elevation: 3,
                   ),
-                  child: Text(
-                    'إرفاق إيصال الدفع',
-                    style: GoogleFonts.tajawal(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 20,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'ارفاق ايصال الدفع',
+                      style: GoogleFonts.tajawal(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                 ),

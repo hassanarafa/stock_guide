@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../../constants.dart';
@@ -87,6 +88,7 @@ class _RenewBranchState extends State<RenewBranch> {
 
   List<BranchFeeSetting> feeOptions = [];
   BranchFeeSetting? _selectedFee;
+  bool canUploadReceipt = false;
 
   @override
   void initState() {
@@ -206,33 +208,138 @@ class _RenewBranchState extends State<RenewBranch> {
     }
   }
 
-  Future<void> _uploadReceipt() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
+  Future<void> _uploadReceipt({required String userId}) async {
+    if (_selectedBranch == null) {
+      showMessageDialog("⚠️ يرجى اختيار فرع أولاً");
+      return;
+    }
 
-    if (result != null) {
-      File file = File(result.files.single.path!);
+    File? file;
 
-      var uri = Uri.parse(
-        "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionFile",
-      );
+    // اختيار طريقة الرفع (ملفات أو كاميرا)
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text("اختيار طريقة الرفع", style: GoogleFonts.tajawal()),
+          content: Text("من فضلك اختر الطريقة:", style: GoogleFonts.tajawal()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, "file"),
+              child: Text("📂 من الملفات", style: GoogleFonts.tajawal()),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, "camera"),
+              child: Text("📸 من الكاميرا", style: GoogleFonts.tajawal()),
+            ),
+          ],
+        );
+      },
+    );
 
-      var request = http.MultipartRequest("POST", uri);
-      request.fields['SubscriptionBranchId'] =
-          _selectedBranch?.subscriptionId.toString() ?? "0";
-      request.fields['SubscriptionUserId'] = "123";
-      request.files.add(await http.MultipartFile.fromPath('File', file.path));
+    if (choice == null) return;
 
+    if (choice == "file") {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        file = File(result.files.single.path!);
+      }
+    } else if (choice == "camera") {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        file = File(pickedFile.path);
+      }
+    }
+
+    if (file == null) {
+      showMessageDialog("لم يتم اختيار ملف 📄");
+      return;
+    }
+
+    // تأكيد قبل الرفع
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(
+            "تأكيد رفع الملف",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("هل تريد رفع هذا الملف؟", style: GoogleFonts.tajawal()),
+              const SizedBox(height: 10),
+              Text(
+                "📄 ${file!.path.split('/').last}",
+                style: GoogleFonts.tajawal(),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                "الحجم: ${(file.lengthSync() / 1024).toStringAsFixed(2)} KB",
+                style: GoogleFonts.tajawal(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                "إلغاء",
+                style: GoogleFonts.tajawal(color: Colors.red),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              child: Text(
+                "تأكيد",
+                style: GoogleFonts.tajawal(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    // رفع الملف
+    final uri = Uri.parse(
+      "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionFile",
+    );
+
+    var request = http.MultipartRequest("POST", uri);
+    request.fields['SubscriptionBranchId'] =
+        _selectedBranch?.subscriptionId.toString() ?? "0";
+    request.fields['SubscriptionUserId'] = userId;
+    request.files.add(await http.MultipartFile.fromPath('File', file.path));
+
+    // عرض progress indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
       var response = await request.send();
+      Navigator.of(context).pop();
 
       if (response.statusCode == 200) {
-        await showMessageDialog("تم رفع الإيصال بنجاح ✅");
+        showMessageDialog("تم رفع الإيصال بنجاح ✅");
+        setState(() {
+          _selectedBranch = null;
+          canUploadReceipt = false;
+        });
       } else {
-        await showMessageDialog(
-          "فشل رفع الإيصال ❌ (كود: ${response.statusCode})",
-        );
+        showMessageDialog("فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
       }
-    } else {
-      await showMessageDialog("لم يتم اختيار ملف 📄");
+    } catch (e) {
+      Navigator.of(context).pop();
+      showMessageDialog("حدث خطأ أثناء رفع الإيصال: $e");
     }
   }
 
@@ -243,7 +350,7 @@ class _RenewBranchState extends State<RenewBranch> {
     }
 
     final url = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/Branch/UpdateBranch",
+      "http://197.134.252.181/StockGuideAPI/Branch/UpdateBranchInRenew",
     );
 
     final body = {
@@ -267,6 +374,9 @@ class _RenewBranchState extends State<RenewBranch> {
       print("/*/*");
 
       if (response.statusCode == 200) {
+        setState(() {
+          canUploadReceipt = true; // ✅ السماح برفع الإيصال بعد نجاح التجديد
+        });
         await showMessageDialog("تم تجديد الاشتراك بنجاح ✅");
       } else {
         await showMessageDialog("فشل التجديد ❌ (كود: ${response.statusCode})");
@@ -420,24 +530,32 @@ class _RenewBranchState extends State<RenewBranch> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _uploadReceipt,
+                  onPressed: canUploadReceipt
+                      ? () =>
+                            _uploadReceipt(
+                              userId: widget.userId,
+                            )
+                      : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    // ✅ لون مختلف يميز زر الإرفاق
+                    backgroundColor: canUploadReceipt
+                        ? Colors.green
+                        : Colors.grey,
                     elevation: 3,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: Text(
-                    'ارفاق ايصال الدفع',
-                    style: GoogleFonts.tajawal(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 18,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'ارفاق ايصال الدفع',
+                      style: GoogleFonts.tajawal(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
               ),

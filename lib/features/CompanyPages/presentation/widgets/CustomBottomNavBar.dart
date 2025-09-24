@@ -153,8 +153,8 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
               backgroundColor: Colors.white,
               icon: Image.asset(
                 _currentIndex == 2
-                    ? 'assets/icons/stop.png'
-                    : 'assets/icons/stop(disable).png',
+                    ? 'assets/icons/restart.png'
+                    : 'assets/icons/restart(disable).png',
                 width: 24,
                 height: 24,
               ),

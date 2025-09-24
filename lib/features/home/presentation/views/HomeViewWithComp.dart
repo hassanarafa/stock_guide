@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:stock_guide/constants.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../Add/presentation/views/AddCompany.dart';
 import '../../../CompanyPages/presentation/views/MainLayout.dart';
@@ -21,15 +24,38 @@ class HomeWithCompanies extends StatefulWidget {
 class _HomeWithCompaniesState extends State<HomeWithCompanies> {
   List<Map<String, dynamic>> companyList = [];
   bool isLoading = true;
-  Map<int, bool> adminStatusByCompany = {}; // ✅ store admin per companyId
+  Map<int, bool> adminStatusByCompany = {};
+  String? errorMessage;
+  StreamSubscription? _subscription;
 
   @override
   void initState() {
     super.initState();
     fetchCompanies();
+    _subscription = Connectivity().onConnectivityChanged.listen((result) async {
+      if (result != ConnectivityResult.none) {
+        if (await _checkInternet()) {
+          fetchCompanies();
+        }
+      }
+    });
   }
 
-  /// ✅ Step 1: fetch user info for a given company
+  Future<bool> _checkInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> fetchUserInfo(String userId, int companyId) async {
     try {
       final url = Uri.parse(
@@ -48,6 +74,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
           adminStatusByCompany[companyId] = false;
         });
       }
+    } on SocketException {
+      setState(() {
+        errorMessage = "لا يوجد اتصال بالإنترنت، حاول مرة أخرى.";
+      });
     } catch (e) {
       print("Error fetching user info: $e");
       setState(() {
@@ -56,8 +86,12 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     }
   }
 
+
   Future<void> fetchCompanies() async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
     final url = Uri.parse(
       'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}',
@@ -83,6 +117,12 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
           isLoading = false;
         });
       }
+    } on SocketException {
+      setState(() {
+        errorMessage =
+            "لا يوجد اتصال بالإنترنت، تحقق من الشبكة وحاول مرة أخرى.";
+        isLoading = false;
+      });
     } catch (e) {
       print("Error fetching companies: $e");
       setState(() {
@@ -155,7 +195,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                     return AlertDialog(
                       title: Text(
                         "تأكيد تسجيل الخروج",
-                        style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.tajawal(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       content: Text(
@@ -163,13 +206,18 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                         style: GoogleFonts.tajawal(fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       actionsAlignment: MainAxisAlignment.spaceEvenly,
                       actions: [
                         TextButton(
                           child: Text(
                             "إلغاء",
-                            style: GoogleFonts.tajawal(fontSize: 16, color: Colors.grey),
+                            style: GoogleFonts.tajawal(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
                           ),
                           onPressed: () => Navigator.of(context).pop(false),
                         ),
@@ -182,7 +230,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                           ),
                           child: Text(
                             "تسجيل الخروج",
-                            style: GoogleFonts.tajawal(fontSize: 16, color: Colors.white),
+                            style: GoogleFonts.tajawal(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
                           ),
                           onPressed: () => Navigator.of(context).pop(true),
                         ),
@@ -194,7 +245,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                 if (confirm == true) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => LoginView()),
-                        (route) => false,
+                    (route) => false,
                   );
                 }
               },
@@ -217,6 +268,38 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
         ),
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
+            : errorMessage !=
+                  null // ✅ حالة الخطأ
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.wifi_off, color: Colors.red, size: 60),
+                    const SizedBox(height: 12),
+                    Text(
+                      errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.tajawal(
+                        fontSize: 18,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (await _checkInternet()) {
+                          fetchCompanies();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("⚠️ ما زال لا يوجد اتصال بالإنترنت")),
+                          );
+                        }
+                      },
+                      child: const Text("إعادة المحاولة"),
+                    ),
+                  ],
+                ),
+              )
             : companyList.isEmpty
             ? Center(
                 child: Text(
@@ -307,8 +390,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                       userId: widget.userId,
                                       companyName: company['companyName'],
                                       companyId: companyId,
-                                      isAdmin:
-                                          isAdmin,
+                                      isAdmin: isAdmin,
                                       companyStatus: company['statusId'],
                                     ),
                                   ),

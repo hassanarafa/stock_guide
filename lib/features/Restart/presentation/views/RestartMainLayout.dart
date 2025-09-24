@@ -49,11 +49,15 @@ class _RestartMainLayoutState extends State<RestartMainLayout>
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 10,right: 5),
+                padding: const EdgeInsets.only(top: 10, right: 5),
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.blue, size: 28),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.blue,
+                      size: 28,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
@@ -88,24 +92,9 @@ class _RestartMainLayoutState extends State<RestartMainLayout>
                     indicatorPadding: const EdgeInsets.all(2),
                     indicatorSize: TabBarIndicatorSize.tab,
                     tabs: const [
-                      Tab(
-                        child: Text(
-                          "اعادة تشغيل شركة",
-                          style: TextStyle(fontSize: 11),
-                        ),
-                      ),
-                      Tab(
-                        child: Text(
-                          "اعادة تشغيل فرع",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      Tab(
-                        child: Text(
-                          "اعادة تشغيل موبايل",
-                          style: TextStyle(fontSize: 10),
-                        ),
-                      ),
+                      Tab(child: Text("شركة")),
+                      Tab(child: Text("فرع")),
+                      Tab(child: Text("موبايل")),
                     ],
                   ),
                 ),

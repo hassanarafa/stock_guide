@@ -183,7 +183,6 @@ class _RestartBranchState extends State<RestartBranch> {
                 ),
                 const SizedBox(height: 20),
 
-                // Dropdown for branches
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
@@ -222,18 +221,28 @@ class _RestartBranchState extends State<RestartBranch> {
 
                 const SizedBox(height: 20),
 
-                // Toggle buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      buildToggleButton("اعادة تشغيل دائم", false),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: buildToggleButton("اعادة تشغيل دائم", false),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      buildToggleButton("اعادة تشغيل مؤقت", true),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: buildToggleButton("اعادة تشغيل مؤقت", true),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+
 
                 if (isTemporaryStop)
                   Padding(

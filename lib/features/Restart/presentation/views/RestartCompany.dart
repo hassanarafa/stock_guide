@@ -194,7 +194,6 @@ class _RestartCompanyState extends State<RestartCompany> {
 
                 const SizedBox(height: 20),
 
-                // Restart type toggle buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Row(

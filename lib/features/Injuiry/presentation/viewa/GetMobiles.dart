@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -10,12 +11,18 @@ class UserModel {
   final String mobile;
   final String name;
   final bool isPaid;
+  final String? currentSubscribtion;
+  int? noMonths;
+  int? fees;
 
   UserModel({
     required this.userId,
     required this.mobile,
     required this.name,
     required this.isPaid,
+    this.currentSubscribtion,
+    this.noMonths,
+    this.fees,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -23,7 +30,8 @@ class UserModel {
       userId: json['userId'],
       mobile: json['mobile'] ?? "",
       name: json['displayName'] ?? "",
-      isPaid: json['isActive'] ?? false,
+      isPaid: json['isPaid'] ?? false,
+      currentSubscribtion: json['currentSubscribtion'],
     );
   }
 }
@@ -49,7 +57,24 @@ class _GetMobilesState extends State<GetMobiles> {
     fetchUsers();
   }
 
+  Future<bool> _checkInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    }
+  }
+
   Future<void> fetchUsers() async {
+    if (!await _checkInternet()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ لا يوجد اتصال بالإنترنت")),
+      );
+      setState(() => isLoading = false);
+      return;
+    }
+
     final url = Uri.parse(
       "http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=${widget.companyId}",
     );
@@ -66,8 +91,27 @@ class _GetMobilesState extends State<GetMobiles> {
 
         final allUsers = [...currentUnpaid, ...noActive];
 
+        List<UserModel> loadedUsers = allUsers.map((json) => UserModel.fromJson(json)).toList();
+
+        final settings = await fetchUserFeeSettings();
+        for (var user in loadedUsers) {
+          if (settings.isNotEmpty) {
+            user.noMonths = settings.first['noMonths'];
+            final feeValue = settings.first['fees'];
+            if (feeValue != null) {
+              if (feeValue is double) {
+                user.fees = feeValue.toInt();
+              } else if (feeValue is int) {
+                user.fees = feeValue;
+              } else {
+                user.fees = int.tryParse(feeValue.toString());
+              }
+            }
+          }
+        }
+
         setState(() {
-          users = allUsers.map((json) => UserModel.fromJson(json)).toList();
+          users = loadedUsers;
           isLoading = false;
         });
       } else {
@@ -80,6 +124,13 @@ class _GetMobilesState extends State<GetMobiles> {
   }
 
   Future<List<Map<String, dynamic>>> fetchUserFeeSettings() async {
+    if (!await _checkInternet()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ لا يوجد اتصال بالإنترنت")),
+      );
+      return [];
+    }
+
     final url = Uri.parse(
       "http://197.134.252.181/StockGuideAPI/User/GetSettingOfUserFeesInFirstTime",
     );
@@ -98,12 +149,17 @@ class _GetMobilesState extends State<GetMobiles> {
   }
 
   Future<void> updateUser(
-    UserModel user,
-    String name,
-    String mobile,
-    int months,
-    double fees,
-  ) async {
+      UserModel user,
+      String name,
+      String mobile,
+      ) async {
+    if (!await _checkInternet()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ لا يوجد اتصال بالإنترنت")),
+      );
+      return;
+    }
+
     final url = Uri.parse(
       "http://197.134.252.181/StockGuideAPI/User/UpdateUser",
     );
@@ -111,11 +167,9 @@ class _GetMobilesState extends State<GetMobiles> {
     final body = {
       "companyId": widget.companyId,
       "userId": user.userId,
-      "updatedByUserId": "admin", // استبدلها بالـ userId الفعلي
+      "updatedByUserId": "admin",
       "userName": name,
       "mobileNo": mobile,
-      "noMonth": months,
-      "fees": fees,
     };
 
     try {
@@ -128,89 +182,81 @@ class _GetMobilesState extends State<GetMobiles> {
       if (response.statusCode == 200) {
         Navigator.of(context).pop();
         fetchUsers();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ تم تعديل بيانات المستخدم بنجاح")),
+        );
       } else {
         print("Update failed: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ فشل التعديل")),
+        );
       }
     } catch (e) {
       print("Error updating user: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ حدث خطأ أثناء التعديل")),
+      );
     }
   }
 
-  void showEditDialog(UserModel user) async {
-    final settings = await fetchUserFeeSettings();
-
+  void showEditDialog(UserModel user) {
     final nameController = TextEditingController(text: user.name);
     final mobileController = TextEditingController(text: user.mobile);
-
-    Map<String, dynamic>? selectedSetting = settings.isNotEmpty
-        ? settings.first
-        : null;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: Text(
-                "تعديل بيانات المستخدم",
-                style: GoogleFonts.tajawal(),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: "الاسم"),
-                    ),
-                    TextField(
-                      controller: mobileController,
-                      decoration: const InputDecoration(
-                        labelText: "رقم الموبايل",
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<Map<String, dynamic>>(
-                      decoration: const InputDecoration(labelText: "الخطة"),
-                      value: selectedSetting,
-                      items: settings.map((setting) {
-                        return DropdownMenuItem<Map<String, dynamic>>(
-                          value: setting,
-                          child: Text(
-                            "${setting['noMonths']} شهر - ${setting['fees']} ج.م",
-                            style: GoogleFonts.tajawal(),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          selectedSetting = val;
-                        });
-                      },
-                    ),
-                  ],
+        return AlertDialog(
+          title: Text("تعديل بيانات المستخدم", style: GoogleFonts.tajawal()),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: "الاسم"),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text("إلغاء"),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                ),
-                ElevatedButton(
-                  child: const Text("حفظ"),
-                  onPressed: () {
-                    if (selectedSetting == null) return;
-                    final name = nameController.text.trim();
-                    final mobile = mobileController.text.trim();
-                    final months = selectedSetting!['noMonths'];
-                    final fees = selectedSetting!['fees'].toDouble();
-
-                    updateUser(user, name, mobile, months, fees);
-                  },
+                TextField(
+                  controller: mobileController,
+                  decoration: const InputDecoration(labelText: "رقم الموبايل"),
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("إلغاء"),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+            ElevatedButton(
+              child: const Text("حفظ"),
+              onPressed: () {
+                final name = nameController.text.trim();
+                final mobile = mobileController.text.trim();
+
+                if (name.isEmpty || mobile.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("⚠️ يجب ملء جميع الحقول")),
+                  );
+                  return;
+                }
+
+                final duplicate = users.any((u) =>
+                u.userId != user.userId && (u.name == name || u.mobile == mobile));
+
+                if (duplicate) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("⚠️ الاسم أو رقم الموبايل مستخدم بالفعل"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                updateUser(user, name, mobile);
+              },
+            ),
+          ],
         );
       },
     );
@@ -262,8 +308,7 @@ class _GetMobilesState extends State<GetMobiles> {
                             children: [
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       user.name,
@@ -280,6 +325,27 @@ class _GetMobilesState extends State<GetMobiles> {
                                         color: Colors.grey[600],
                                       ),
                                     ),
+                                    if (user.noMonths != null && user.fees != null) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "📅 عدد الشهور: ${user.noMonths}",
+                                        style: GoogleFonts.tajawal(fontSize: 16, color: Colors.black87),
+                                      ),
+                                      Text(
+                                        "💰 الرسوم: ${user.fees} ج.م",
+                                        style: GoogleFonts.tajawal(fontSize: 16, color: Colors.black87),
+                                      ),
+                                    ],
+                                    if (user.currentSubscribtion != null) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        user.currentSubscribtion!,
+                                        style: GoogleFonts.tajawal(
+                                          fontSize: 14,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),

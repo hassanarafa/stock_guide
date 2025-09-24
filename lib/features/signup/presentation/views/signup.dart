@@ -9,17 +9,25 @@ import '../../../../core/utils/assets.dart';
 import '../../../login/presentation/views/loginView.dart';
 import 'SignupVerification.dart';
 
-class SignUpView extends StatelessWidget {
+class SignUpView extends StatefulWidget {
   const SignUpView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController phoneController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
-    final TextEditingController confirmPasswordController =
-        TextEditingController();
+  State<SignUpView> createState() => _SignUpViewState();
+}
 
+class _SignUpViewState extends State<SignUpView> {
+  bool _isPasswordVisible = false;
+  bool _isPasswordVisibleRepeat = false;
+
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -65,7 +73,7 @@ class SignUpView extends StatelessWidget {
                         ),
                       ),
                     ),
-                
+
                     // Image
                     Center(
                       child: Image.asset(
@@ -74,13 +82,13 @@ class SignUpView extends StatelessWidget {
                         fit: BoxFit.contain,
                       ),
                     ),
-                
+
                     const SizedBox(height: 16),
-                
+
                     // Instruction
                     Center(
                       child: Text(
-                        "انضم الينا بإستخدام رقم الهاتف",
+                        "انضم الينا بإستخدام رقم الموبايل",
                         style: GoogleFonts.tajawal(
                           textStyle: const TextStyle(
                             color: primaryTextColor,
@@ -90,9 +98,9 @@ class SignUpView extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                
+
                     const SizedBox(height: 12),
-                
+
                     // Username
                     TextField(
                       controller: nameController,
@@ -105,15 +113,15 @@ class SignUpView extends StatelessWidget {
                         prefixIcon: const Icon(Icons.person),
                       ),
                     ),
-                
+
                     const SizedBox(height: 12),
-                
+
                     // Phone
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
-                        hintText: 'رقم الهاتف',
+                        hintText: 'رقم الموبايل',
                         hintStyle: GoogleFonts.tajawal(),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -121,15 +129,15 @@ class SignUpView extends StatelessWidget {
                         prefixIcon: const Icon(Icons.phone),
                       ),
                     ),
-                
+
                     const SizedBox(height: 12),
-                
+
                     // Password
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: TextField(
                         controller: passwordController,
-                        obscureText: true,
+                        obscureText: !_isPasswordVisible,
                         decoration: InputDecoration(
                           hintText: 'كلمة السر',
                           hintStyle: GoogleFonts.tajawal(),
@@ -137,16 +145,28 @@ class SignUpView extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
                         ),
                       ),
                     ),
-                
+
                     // Confirm Password
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: TextField(
                         controller: confirmPasswordController,
-                        obscureText: true,
+                        obscureText: !_isPasswordVisibleRepeat,
                         decoration: InputDecoration(
                           hintText: 'إعادة كتابة كلمة السر',
                           hintStyle: GoogleFonts.tajawal(),
@@ -154,10 +174,22 @@ class SignUpView extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisibleRepeat
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisibleRepeat = !_isPasswordVisibleRepeat;
+                              });
+                            },
+                          ),
                         ),
                       ),
                     ),
-                
+
                     // Register Button
                     SizedBox(
                       width: double.infinity,
@@ -175,7 +207,7 @@ class SignUpView extends StatelessWidget {
                           final String password = passwordController.text;
                           final String confirmPassword =
                               confirmPasswordController.text;
-                
+
                           if (name.isEmpty ||
                               phone.isEmpty ||
                               password.isEmpty ||
@@ -188,7 +220,7 @@ class SignUpView extends StatelessWidget {
                             );
                             return;
                           }
-                
+
                           if (password != confirmPassword) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -198,31 +230,32 @@ class SignUpView extends StatelessWidget {
                             );
                             return;
                           }
-                
+
                           final Uri url = Uri.parse(
                             'http://197.134.252.181/StockGuideAPI/User/Register',
                           );
-                
+
                           final Map<String, dynamic> body = {
                             "userName": name,
                             "password": password,
                             "mobileNo": phone,
                             "confirmPassword": confirmPassword,
                           };
-                
+
                           try {
                             final response = await http.post(
                               url,
                               headers: {'Content-Type': 'application/json'},
                               body: jsonEncode(body),
                             );
-                
+
                             final jsonResponse = jsonDecode(response.body);
-                
+
                             print('Response: $jsonResponse');
                             print(jsonResponse['data']['userId']);
-                            final String userId = jsonResponse['data']['userId'];
-                
+                            final String userId =
+                                jsonResponse['data']['userId'];
+
                             if (jsonResponse['saveIndicator'] == 1) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -233,7 +266,7 @@ class SignUpView extends StatelessWidget {
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                
+
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
@@ -275,9 +308,9 @@ class SignUpView extends StatelessWidget {
                         ),
                       ),
                     ),
-                
+
                     const SizedBox(height: 12),
-                
+
                     // Already have account
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

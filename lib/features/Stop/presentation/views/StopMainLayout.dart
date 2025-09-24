@@ -90,9 +90,9 @@ class _StopMainLayoutState extends State<StopMainLayout>
                     indicatorPadding: const EdgeInsets.all(2),
                     indicatorSize: TabBarIndicatorSize.tab,
                     tabs: const [
-                      Tab(child: Text("ايقاف شركة")),
-                      Tab(child: Text("ايقاف فرع")),
-                      Tab(child: Text("ايقاف موبايل")),
+                      Tab(child: Text("شركة")),
+                      Tab(child: Text("فرع")),
+                      Tab(child: Text("موبايل")),
                     ],
                   ),
                 ),
