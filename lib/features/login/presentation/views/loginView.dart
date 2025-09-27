@@ -11,7 +11,6 @@ import '../../../../core/utils/assets.dart';
 import '../../../home/presentation/views/HomeView.dart';
 import '../../../home/presentation/views/HomeViewWithComp.dart';
 import '../../../signup/presentation/views/signup.dart';
-import 'forgetPassword.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -187,7 +186,6 @@ class _LoginViewState extends State<LoginView> {
                             return;
                           }
 
-                          // ✅ تحقق من الإنترنت قبل أي حاجة
                           if (!await _checkInternet()) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -307,7 +305,6 @@ class _LoginViewState extends State<LoginView> {
                           final String phone = phoneController.text.trim();
                           final String password = passwordController.text;
 
-                          // ✅ تحقق من الحقول الفارغة
                           if (phone.isEmpty || password.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

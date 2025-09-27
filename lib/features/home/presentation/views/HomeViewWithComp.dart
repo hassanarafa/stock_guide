@@ -25,13 +25,14 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
   List<Map<String, dynamic>> companyList = [];
   bool isLoading = true;
   Map<int, bool> adminStatusByCompany = {};
+  Map<int, bool> canInsertBranchByCompany = {};
+  Map<int, bool> canInsertUserByCompany = {};
   String? errorMessage;
   StreamSubscription? _subscription;
 
   @override
   void initState() {
     super.initState();
-    fetchCompanies();
     _subscription = Connectivity().onConnectivityChanged.listen((result) async {
       if (result != ConnectivityResult.none) {
         if (await _checkInternet()) {
@@ -68,10 +69,17 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
       if (data["status"] == 1 && data["data"] != null) {
         setState(() {
           adminStatusByCompany[companyId] = data["data"]["isAdmin"] ?? false;
+          canInsertBranchByCompany[companyId] =
+              data['data']['hasRightToInsertBranch'] ?? false;
+
+          canInsertBranchByCompany[companyId] =
+              data['data']['hasRightToInsertUsers'] ?? false;
         });
       } else {
         setState(() {
           adminStatusByCompany[companyId] = false;
+          canInsertBranchByCompany[companyId] = false;
+          canInsertUserByCompany[companyId] = false;
         });
       }
     } on SocketException {
@@ -82,6 +90,8 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
       print("Error fetching user info: $e");
       setState(() {
         adminStatusByCompany[companyId] = false;
+        canInsertBranchByCompany[companyId] = false;
+        canInsertUserByCompany[companyId] = false;
       });
     }
   }
@@ -317,6 +327,14 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                   final company = companyList[index];
                   final companyId = company['companyId'];
                   final isAdmin = adminStatusByCompany[companyId] ?? false;
+                  final hasRightToInsertBranch =
+                      canInsertBranchByCompany[companyId] ?? false;
+                  final hasRightToInsertUsers =
+                      canInsertUserByCompany[companyId] ?? false;
+
+                  print("$isAdmin /*/*");
+                  print("$hasRightToInsertBranch /*/*");
+                  print("$hasRightToInsertUsers /*/*");
 
                   return Card(
                     shape: RoundedRectangleBorder(
@@ -385,8 +403,15 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                   ),
                                 ),
                               ),
-                              if (isAdmin) ...{
+                              if (isAdmin ||
+                                  (!isAdmin &&
+                                      (hasRightToInsertBranch ||
+                                          hasRightToInsertUsers)))
                                 const SizedBox(width: 40),
+                              if (isAdmin ||
+                                  (!isAdmin &&
+                                      (hasRightToInsertBranch ||
+                                          hasRightToInsertUsers)))
                                 Expanded(
                                   child: InkWell(
                                     onTap: () => navigateToPage(
@@ -396,6 +421,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                         companyId: companyId,
                                         isAdmin: isAdmin,
                                         companyStatus: company['statusId'],
+                                        hasRightToInsertBranch:
+                                            hasRightToInsertBranch,
+                                        hasRightToInsertUsers:
+                                            hasRightToInsertUsers,
                                       ),
                                     ),
                                     borderRadius: BorderRadius.circular(16),
@@ -431,11 +460,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                     ),
                                   ),
                                 ),
-                              },
                             ],
                           ),
-                          if (isAdmin) ...{
-                            const SizedBox(height: 24),
+                          const SizedBox(height: 24),
+                          if (isAdmin)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -519,7 +547,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                 ),
                               ],
                             ),
-                          },
                         ],
                       ),
                     ),

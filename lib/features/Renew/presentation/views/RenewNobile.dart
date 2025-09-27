@@ -390,7 +390,10 @@ class _RenewMobileState extends State<RenewMobile> {
                       items: mobiles.map((mobile) {
                         return DropdownMenuItem(
                           value: mobile,
-                          child: Text(mobile.name),
+                          child: Text(
+                            "${mobile.name} - ${mobile.mobileNo}",
+                            style: GoogleFonts.tajawal(fontSize: 16),
+                          ),
                         );
                       }).toList(),
                     ),

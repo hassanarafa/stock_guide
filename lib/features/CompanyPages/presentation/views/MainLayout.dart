@@ -8,6 +8,8 @@ class MainLayout extends StatefulWidget {
   final String userId;
   final bool isAdmin;
   final int companyStatus;
+  final bool hasRightToInsertBranch;
+  final bool hasRightToInsertUsers;
 
   const MainLayout({
     super.key,
@@ -16,6 +18,8 @@ class MainLayout extends StatefulWidget {
     required this.userId,
     required this.isAdmin,
     required this.companyStatus,
+    required this.hasRightToInsertBranch,
+    required this.hasRightToInsertUsers,
   });
 
   @override
@@ -30,6 +34,9 @@ class _MainLayoutState extends State<MainLayout>
   @override
   void initState() {
     super.initState();
+    print(widget.isAdmin);
+    print(widget.hasRightToInsertBranch);
+    print(widget.hasRightToInsertUsers);
     _tabController = TabController(length: 3, vsync: this);
     _companyStatus = widget.companyStatus; // البداية
   }
@@ -57,7 +64,9 @@ class _MainLayoutState extends State<MainLayout>
           companyId: widget.companyId,
           companyName: widget.companyName,
           isAdmin: widget.isAdmin,
-          companyStatus: _companyStatus, // 👈 استخدم النسخة اللي بتتغير
+          companyStatus: _companyStatus,
+          hasRightToInsertUsers: widget.hasRightToInsertUsers,
+          hasRightToInsertBranch: widget.hasRightToInsertBranch,
         ),
       ),
     );

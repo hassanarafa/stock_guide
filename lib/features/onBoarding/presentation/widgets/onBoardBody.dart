@@ -74,7 +74,7 @@ class _OnBoardingBodyState extends State<OnBoardingBody> {
       width: _currentPage == index ? 20 : 8,
       height: 8,
       decoration: BoxDecoration(
-        color: _currentPage == index ? Colors.blue : Colors.grey[400],
+        color: _currentPage == index ? primaryColor : Colors.grey[400],
         borderRadius: BorderRadius.circular(20),
       ),
     );
@@ -83,6 +83,11 @@ class _OnBoardingBodyState extends State<OnBoardingBody> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        toolbarHeight: 0,
+        elevation: 0,
+      ),
       body: Container(
         color: Colors.white,
         child: Stack(
@@ -141,7 +146,7 @@ class _OnBoardingBodyState extends State<OnBoardingBody> {
                   ElevatedButton(
                     onPressed: _goToNext,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
+                      backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),

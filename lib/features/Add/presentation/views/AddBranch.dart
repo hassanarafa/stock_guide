@@ -563,7 +563,7 @@ class _AddBranchState extends State<AddBranch> {
 
                                 if (_editingBranch != null) {
                                   final body = {
-                                    "branchId": _editingBranch!['id'],
+                                    "branchId": _editingBranch!['branchId'],
                                     "branchName": name,
                                     "companyId": widget.companyId,
                                     "userId": userId,

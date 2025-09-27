@@ -227,11 +227,11 @@ class _RestartBranchState extends State<RestartBranch> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: buildToggleButton("اعادة تشغيل دائم", false),
+                        child: buildToggleButton("تشغيل دائم", false),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: buildToggleButton("اعادة تشغيل مؤقت", true),
+                        child: buildToggleButton("تشغيل مؤقت", true),
                       ),
                     ],
                   ),

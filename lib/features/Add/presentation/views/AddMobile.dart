@@ -924,12 +924,25 @@ class _AddMobileState extends State<AddMobile> {
                                               ),
                                             ),
                                             const SizedBox(height: 4),
-                                            Text(
-                                              "الرسوم: ${user['fees']} ج.م - لمدة ${user['noMonth']} شهر",
-                                              style: GoogleFonts.tajawal(
-                                                fontSize: 13,
-                                                color: Colors.black87,
-                                              ),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  '${(user['fees'] as num).toInt()} ج.م',
+                                                  style: GoogleFonts.tajawal(
+                                                    fontSize: 14,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                if (user['noMonth'] != null)
+                                                  Text(
+                                                    '${user['noMonth']} شهر',
+                                                    style: GoogleFonts.tajawal(
+                                                      fontSize: 13,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ],
                                         ),
