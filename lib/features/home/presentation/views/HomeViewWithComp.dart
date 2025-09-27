@@ -72,7 +72,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
           canInsertBranchByCompany[companyId] =
               data['data']['hasRightToInsertBranch'] ?? false;
 
-          canInsertBranchByCompany[companyId] =
+          canInsertUserByCompany[companyId] =
               data['data']['hasRightToInsertUsers'] ?? false;
         });
       } else {
@@ -331,10 +331,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                       canInsertBranchByCompany[companyId] ?? false;
                   final hasRightToInsertUsers =
                       canInsertUserByCompany[companyId] ?? false;
-
-                  print("$isAdmin /*/*");
-                  print("$hasRightToInsertBranch /*/*");
-                  print("$hasRightToInsertUsers /*/*");
 
                   return Card(
                     shape: RoundedRectangleBorder(

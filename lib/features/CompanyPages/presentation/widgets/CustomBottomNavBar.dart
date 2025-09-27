@@ -44,8 +44,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
     print("/*/*/**/");
     print(widget.hasRightToInsertBranch);
 
-    if (!widget.isAdmin &&
-        (!widget.hasRightToInsertBranch || !widget.hasRightToInsertUsers)) {
+    if (!widget.isAdmin) {
       _pages = [
         AddMainLayout(
           companyId: widget.companyId,
@@ -84,21 +83,16 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
 
   @override
   Widget build(BuildContext context) {
-    final bool singlePage =
-        !widget.isAdmin &&
-        (!widget.hasRightToInsertBranch || !widget.hasRightToInsertUsers);
+    final bool singlePage = !widget.isAdmin;
 
     if (singlePage) {
       return Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.only(bottom: 15),
-          child: AddMainLayout(
-            companyId: widget.companyId,
-            companyName: widget.companyName,
-            isAdmin: widget.isAdmin,
-            hasRightToInsertBranch: widget.hasRightToInsertBranch,
-            hasRightToInsertUsers: widget.hasRightToInsertUsers,
-          ),
+        body: AddMainLayout(
+          companyId: widget.companyId,
+          companyName: widget.companyName,
+          isAdmin: widget.isAdmin,
+          hasRightToInsertBranch: widget.hasRightToInsertBranch,
+          hasRightToInsertUsers: widget.hasRightToInsertUsers,
         ),
       );
     }
