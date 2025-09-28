@@ -364,7 +364,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                               Expanded(
                                 child: InkWell(
                                   onTap: () => navigateToPage(
-                                    const LoginViewWithAdmin(),
+                                    LoginViewWithAdmin(companyId: companyId),
                                   ),
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(

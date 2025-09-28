@@ -521,7 +521,7 @@ class _AddMobileState extends State<AddMobile> {
                     children: [
                       Center(
                         child: Text(
-                          'الفروع التابعة لـ: ${widget.companyName}',
+                          'الموبايلات التابعة لـ: ${widget.companyName}',
                           style: GoogleFonts.tajawal(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
