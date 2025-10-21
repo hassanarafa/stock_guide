@@ -186,19 +186,18 @@ class _LoginViewState extends State<LoginView> {
                             return;
                           }
 
-                          if (!await _checkInternet()) {
+                          final arabicRegex = RegExp(r'[\u0600-\u06FF\u0660-\u0669]');
+                          if (arabicRegex.hasMatch(password)) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('⚠️ لا يوجد اتصال بالإنترنت'),
+                                content: Text('كلمة المرور يجب أن تحتوي على أحرف وأرقام إنجليزية فقط ❌'),
                                 backgroundColor: Colors.red,
                               ),
                             );
                             return;
                           }
 
-                          final Uri loginUrl = Uri.parse(
-                            'http://197.134.252.181/StockGuideAPI/User/login',
-                          );
+                          final Uri loginUrl = Uri.parse('http://197.134.252.181/StockGuideAPI/User/login');
                           final Map<String, dynamic> loginBody = {
                             "userName": phone,
                             "password": password,
@@ -217,19 +216,23 @@ class _LoginViewState extends State<LoginView> {
                             if (loginJson['status'] == 1) {
                               final String userId = loginJson['data']['userId'];
 
-                              final prefs = await SharedPreferences.getInstance();
-                              await prefs.setString('userId', userId);
-
-                              if (!await _checkInternet()) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('⚠️ انقطع الاتصال أثناء تحميل الشركات'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
+                              // ✅ Extract userCurrentSubIsPaid
+                              final companies = loginJson['data']['returnUserCompaniesStatus'] as List<dynamic>;
+                              bool userCurrentSubIsPaid = false;
+                              if (companies.isNotEmpty) {
+                                userCurrentSubIsPaid = companies[0]['userCurrentSubIsPaid'] ?? false;
                               }
 
+                              print("//////////////////////");
+                              print("userCurrentSubIsPaid: $userCurrentSubIsPaid");
+                              print("//////////////////////");
+
+                              // ✅ Store in SharedPreferences (optional)
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setString('userId', userId);
+                              await prefs.setBool('userCurrentSubIsPaid', userCurrentSubIsPaid);
+
+                              // ✅ Fetch companies
                               final companyUrl = Uri.parse(
                                 'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=$userId',
                               );
@@ -245,14 +248,19 @@ class _LoginViewState extends State<LoginView> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => HomeWithCompanies(userId: userId),
+                                    builder: (_) => HomeWithCompanies(
+                                      userId: userId,
+                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here
+                                    ),
                                   ),
                                 );
                               } else {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const HomeView(),
+                                    builder: (_) => HomeView(
+                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here too
+                                    ),
                                   ),
                                 );
                               }
@@ -270,7 +278,7 @@ class _LoginViewState extends State<LoginView> {
                             print("Login Error: $e");
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('حدث خطأ أثناء الاتصال بقاعدة البيانات'),
+                                content: Text('حدث خطأ أثناء الاتصال بالسيرفر'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -316,7 +324,6 @@ class _LoginViewState extends State<LoginView> {
                           }
 
                           final arabicRegex = RegExp(r'[\u0600-\u06FF\u0660-\u0669]');
-
                           if (arabicRegex.hasMatch(password)) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -327,9 +334,7 @@ class _LoginViewState extends State<LoginView> {
                             return;
                           }
 
-                          final Uri loginUrl = Uri.parse(
-                            'http://197.134.252.181/StockGuideAPI/User/login',
-                          );
+                          final Uri loginUrl = Uri.parse('http://197.134.252.181/StockGuideAPI/User/login');
                           final Map<String, dynamic> loginBody = {
                             "userName": phone,
                             "password": password,
@@ -348,8 +353,23 @@ class _LoginViewState extends State<LoginView> {
                             if (loginJson['status'] == 1) {
                               final String userId = loginJson['data']['userId'];
 
+                              // ✅ Extract userCurrentSubIsPaid
+                              final companies = loginJson['data']['returnUserCompaniesStatus'] as List<dynamic>;
+                              bool userCurrentSubIsPaid = false;
+                              if (companies.isNotEmpty) {
+                                print("//////////////////////");
+
+                                userCurrentSubIsPaid = companies[0]['userCurrentSubIsPaid'] ?? false;
+                              }
+
+                              print("//////////////////////");
+                              print("userCurrentSubIsPaid: $userCurrentSubIsPaid");
+                              print("//////////////////////");
+
+                              // ✅ Store in SharedPreferences (optional)
                               final prefs = await SharedPreferences.getInstance();
                               await prefs.setString('userId', userId);
+                              await prefs.setBool('userCurrentSubIsPaid', userCurrentSubIsPaid);
 
                               // ✅ Fetch companies
                               final companyUrl = Uri.parse(
@@ -367,14 +387,19 @@ class _LoginViewState extends State<LoginView> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => HomeWithCompanies(userId: userId),
+                                    builder: (_) => HomeWithCompanies(
+                                      userId: userId,
+                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here
+                                    ),
                                   ),
                                 );
                               } else {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const HomeView(),
+                                    builder: (_) => HomeView(
+                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here too
+                                    ),
                                   ),
                                 );
                               }
@@ -392,7 +417,7 @@ class _LoginViewState extends State<LoginView> {
                             print("Login Error: $e");
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('حدث خطأ أثناء الاتصال بالخادم'),
+                                content: Text('حدث خطأ أثناء الاتصال بالسيرفر'),
                                 backgroundColor: Colors.red,
                               ),
                             );

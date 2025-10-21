@@ -6,7 +6,7 @@ import '../../../Add/presentation/views/AddCompany.dart';
 import '../../../login/presentation/views/loginView.dart';
 
 class HomeView extends StatelessWidget {
-  const HomeView({super.key});
+  const HomeView({super.key, required bool userCurrentSubIsPaid});
 
   @override
   Widget build(BuildContext context) {

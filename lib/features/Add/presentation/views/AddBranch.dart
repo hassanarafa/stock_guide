@@ -596,6 +596,10 @@ class _AddBranchState extends State<AddBranch> {
                                           _editingBranch!['name'] = name;
                                           _editingBranch!['amount'] =
                                               '${_selectedFee?.fees.toInt() ?? 0} ج.م';
+                                          _editingBranch!['fees'] =
+                                              _selectedFee?.fees ?? 0;
+                                          _editingBranch!['onMonths'] =
+                                              _selectedFee?.noMonths ?? 0;
                                         });
 
                                         _editingBranch = null;
@@ -689,7 +693,6 @@ class _AddBranchState extends State<AddBranch> {
 
                                     if (responseData['status'] == 1 &&
                                         responseData['data'] != null) {
-
                                       final branchId =
                                           responseData['data']['branchId'];
 
@@ -862,12 +865,16 @@ class _AddBranchState extends State<AddBranch> {
                                             branchController.text =
                                                 branch['name'];
 
-                                            _selectedFee = _feeOptions.firstWhere(
-                                              (fee) =>
-                                                  '${fee.fees.toInt()} ج.م' ==
-                                                  branch['amount'],
-                                              orElse: () => _feeOptions.first,
-                                            );
+                                            _selectedFee = _feeOptions
+                                                .firstWhere(
+                                                  (option) =>
+                                                      option.noMonths ==
+                                                          branch['onMonths'] &&
+                                                      option.fees ==
+                                                          branch['fees'],
+                                                  orElse: () =>
+                                                      _feeOptions.first,
+                                                );
                                           });
 
                                           _scrollController.animateTo(

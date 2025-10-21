@@ -29,38 +29,56 @@ class _RestartMobileState extends State<RestartMobile> {
 
   Future<void> fetchMobiles() async {
     final url = Uri.parse(
-        'http://197.134.252.181/StockGuideAPI/User/UserGetAllByCompanyIdWithStatus?companyId=${widget.companyId}');
+      'http://197.134.252.181/StockGuideAPI/User/UserGetAllByCompanyIdWithStatus?companyId=${widget.companyId}',
+    );
 
-    final response = await http.get(url);
+    try {
+      final response = await http.get(url);
+      print(response.body);
 
-    print(response.body);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
 
-    if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic> &&
+            decoded.containsKey('data') &&
+            decoded['data'] is List) {
+          final List<dynamic> data = decoded['data'];
 
-      if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
-        final List<dynamic> data = decoded['data'];
-
-        setState(() {
-          mobiles = data
-              .where((item) => item['statusId'] == 2 || item['statusId'] == 3)
-              .map<Map<String, dynamic>>((item) {
-            return {
-              'id': item['userId'],
-              'name': item['mobileNO'],
-              'statusId': item['statusId'],
-            };
+          // ✅ Filter only working statuses (2 or 3)
+          final filtered = data.where((item) {
+            final statusId = item['statusId'];
+            return statusId == 2 || statusId == 3;
           }).toList();
+
+          setState(() {
+            mobiles = filtered.map<Map<String, dynamic>>((item) {
+              final userName = item['userName']?.toString() ?? '';
+              final userNameInApp = item['userNameInApp']?.toString() ?? '';
+              final statusId = item['statusId'];
+
+              return {
+                'id': item['userId'],
+                'name': "$userNameInApp - $userName",
+                'statusId': statusId,
+              };
+            }).toList();
+
+            isLoading = false;
+          });
+        } else {
+          throw Exception('Unexpected response format');
+        }
+      } else {
+        setState(() {
           isLoading = false;
         });
-      } else {
-        throw Exception('Unexpected response format');
+        throw Exception('Failed to fetch branches');
       }
-    } else {
+    } catch (e) {
       setState(() {
         isLoading = false;
       });
-      throw Exception('Failed to fetch branches');
+      print('Error fetching mobiles: $e');
     }
   }
 
@@ -151,6 +169,7 @@ class _RestartMobileState extends State<RestartMobile> {
 
     if (response.statusCode == 200) {
       await showMessageDialog('✅ تم تغيير حالة الموبايل بنجاح');
+      Navigator.pop(context);
     } else {
       await showMessageDialog('❌ فشل في تغيير حالة الموبايل');
     }

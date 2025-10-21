@@ -124,6 +124,7 @@ class _RestartBranchState extends State<RestartBranch> {
       });
 
       await showMessageDialog('✅ تم تغيير حالة الفرع بنجاح');
+      Navigator.pop(context);
     } else {
       await showMessageDialog('❌ فشل في تغيير حالة الفرع');
     }

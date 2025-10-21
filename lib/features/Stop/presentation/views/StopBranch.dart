@@ -166,6 +166,7 @@ class _StopBranchState extends State<StopBranch> {
       });
 
       await showMessageDialog('✅ تم تغيير حالة الفرع بنجاح');
+      Navigator.pop(context);
     } else {
       await showMessageDialog('❌ فشل في تغيير حالة الفرع');
     }

@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../constants.dart';
-import '../../../home/presentation/views/HomeViewWithComp.dart';
 
 class AddCompany extends StatelessWidget {
   const AddCompany({super.key});
@@ -43,11 +42,7 @@ class AddCompany extends StatelessWidget {
             content: Text(jsonResponse['message'] ?? 'تمت الإضافة بنجاح'),
           ),
         );
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => HomeWithCompanies(userId: userId)),
-          (route) => false,
-        );
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(jsonResponse['message'] ?? 'فشل الإضافة')),

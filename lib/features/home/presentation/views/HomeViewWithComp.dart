@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:stock_guide/constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-
 import '../../../Add/presentation/views/AddCompany.dart';
 import '../../../CompanyPages/presentation/views/MainLayout.dart';
 import '../../../Stock Guide/presentation/views/LoginViewWithAdmin.dart';
@@ -14,8 +13,9 @@ import '../../../login/presentation/views/loginView.dart';
 
 class HomeWithCompanies extends StatefulWidget {
   final String userId;
+  final bool userCurrentSubIsPaid;
 
-  const HomeWithCompanies({super.key, required this.userId});
+  const HomeWithCompanies({super.key, required this.userId, required this.userCurrentSubIsPaid});
 
   @override
   State<HomeWithCompanies> createState() => _HomeWithCompaniesState();
@@ -29,6 +29,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
   Map<int, bool> canInsertUserByCompany = {};
   String? errorMessage;
   StreamSubscription? _subscription;
+  Map<int, bool> canDeleteCompany = {};
 
   @override
   void initState() {
@@ -65,13 +66,11 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
       );
       final response = await http.get(url);
       final data = json.decode(response.body);
-
       if (data["status"] == 1 && data["data"] != null) {
         setState(() {
           adminStatusByCompany[companyId] = data["data"]["isAdmin"] ?? false;
           canInsertBranchByCompany[companyId] =
               data['data']['hasRightToInsertBranch'] ?? false;
-
           canInsertUserByCompany[companyId] =
               data['data']['hasRightToInsertUsers'] ?? false;
         });
@@ -96,29 +95,275 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     }
   }
 
+  Future<void> _showBranchesBeforeNavigate(int companyId) async {
+    try {
+      final url = Uri.parse(
+        "http://197.134.252.181/StockGuideAPI/Branch/GetAllBranchesByCompanyIdInRenew?companyId=$companyId",
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 1 && decoded['data'] != null) {
+          final data = decoded['data'];
+          List<Map<String, dynamic>> allBranches = [];
+          if (data['noSubscriptionEver'] is List) {
+            allBranches.addAll(
+              List<Map<String, dynamic>>.from(data['noSubscriptionEver']),
+            );
+          }
+          if (data['currentUnpaidSubscription'] is List) {
+            allBranches.addAll(
+              List<Map<String, dynamic>>.from(
+                data['currentUnpaidSubscription'],
+              ),
+            );
+          }
+          if (data['noActiveSubscriptionToday'] is List) {
+            allBranches.addAll(
+              List<Map<String, dynamic>>.from(
+                data['noActiveSubscriptionToday'],
+              ),
+            );
+          }
+          List<Map<String, dynamic>> paidBranches = allBranches
+              .where((branch) => branch['isPaid'] == true)
+              .toList();
+          await showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: Text(
+                  "اختر الفرع",
+                  style: GoogleFonts.tajawal(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: paidBranches.isEmpty
+                      ? Center(
+                          child: Text(
+                            "لا توجد فروع مدفوعة لهذه الشركة",
+                            style: GoogleFonts.tajawal(fontSize: 16),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: paidBranches.length,
+                          itemBuilder: (context, index) {
+                            final branch = paidBranches[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              child: ListTile(
+                                title: Text(
+                                  branch['branchName'] ?? 'بدون اسم',
+                                  style: GoogleFonts.tajawal(fontSize: 16),
+                                ),
+                                leading: const Icon(
+                                  Icons.store,
+                                  color: Colors.green,
+                                ),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => LoginViewWithAdmin(
+                                        companyId: companyId,
+                                        branchId: branch['branchId'],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "إلغاء",
+                      style: GoogleFonts.tajawal(fontSize: 16),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("لا توجد فروع متاحة لهذه الشركة")),
+          );
+        }
+      } else {
+        throw Exception("HTTP ${response.statusCode}");
+      }
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("حدث خطأ أثناء تحميل الفروع: $e")));
+    }
+  }
+
+  Future<void> deleteCompany(int companyId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            "تأكيد الحذف",
+            style: GoogleFonts.tajawal(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: Text(
+            "هل أنت متأكد أنك تريد حذف هذه الشركة؟",
+            style: GoogleFonts.tajawal(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          actions: [
+            TextButton(
+              child: Text(
+                "إلغاء",
+                style: GoogleFonts.tajawal(fontSize: 16, color: Colors.grey),
+              ),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                "حذف",
+                style: GoogleFonts.tajawal(fontSize: 16, color: Colors.white),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+    try {
+      final url = Uri.parse(
+        "http://197.134.252.181/StockGuideAPI/Company/DeleteCompany"
+        "?userId=${widget.userId}&companyId=$companyId",
+      );
+      final response = await http.post(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data["status"] == 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("تم حذف الشركة بنجاح 🗑️")),
+          );
+          fetchCompanies();
+        } else {
+          throw Exception(data["message"] ?? "فشل في حذف الشركة");
+        }
+      } else {
+        throw Exception("HTTP ${response.statusCode}");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("حدث خطأ أثناء الحذف: $e")));
+    }
+  }
+
+  Future<bool> hasBranches(int companyId) async {
+    try {
+      final url = Uri.parse(
+        "http://197.134.252.181/StockGuideAPI/Branch/GetAllBranchesByCompanyIdInRenew?companyId=$companyId",
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 1 && decoded['data'] != null) {
+          final data = decoded['data'];
+          final allBranches = [
+            ...(data['noSubscriptionEver'] ?? []),
+            ...(data['currentUnpaidSubscription'] ?? []),
+            ...(data['noActiveSubscriptionToday'] ?? []),
+          ];
+          return allBranches.isNotEmpty;
+        }
+      }
+      return false;
+    } catch (e) {
+      print("Error checking branches: $e");
+      return false;
+    }
+  }
+
+  Future<bool> hasUsers(int companyId) async {
+    try {
+      final url = Uri.parse(
+        "http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=$companyId",
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['status'] == 1 && decoded['data'] != null) {
+          final data = decoded['data'];
+          final allUsers = [
+            ...(data['noSubscriptionEver'] ?? []),
+            ...(data['currentUnpaidSubscription'] ?? []),
+            ...(data['noActiveSubscriptionToday'] ?? []),
+          ];
+          return allUsers.isNotEmpty;
+        }
+      }
+      return false;
+    } catch (e) {
+      print("Error checking users: $e");
+      return false;
+    }
+  }
+
   Future<void> fetchCompanies() async {
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
-
     final url = Uri.parse(
       'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=${widget.userId}',
     );
-
     try {
       final response = await http.get(url);
       final data = json.decode(response.body);
-
       if (data['status'] == 1 && data['data'] != null) {
         final companies = List<Map<String, dynamic>>.from(data['data']);
         setState(() {
           companyList = companies;
           isLoading = false;
         });
-
         for (var company in companies) {
           fetchUserInfo(widget.userId, company['companyId']);
+        }
+        for (var company in companies) {
+          final companyId = company['companyId'];
+          final hasBranch = await hasBranches(companyId);
+          final hasUser = await hasUsers(companyId);
+          setState(() {
+            canDeleteCompany[companyId] = !(hasBranch || hasUser);
+          });
         }
       } else {
         setState(() {
@@ -157,13 +402,11 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
         "statusId": statusId,
         "toStatusDate": '',
       });
-
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: body,
       );
-
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("تم تحديث حالة الشركة بنجاح ✅")),
@@ -250,7 +493,6 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                     );
                   },
                 );
-
                 if (confirm == true) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => LoginView()),
@@ -277,8 +519,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
         ),
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : errorMessage !=
-                  null // ✅ حالة الخطأ
+            : errorMessage != null
             ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -326,34 +567,66 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                 itemBuilder: (context, index) {
                   final company = companyList[index];
                   final companyId = company['companyId'];
+                  final statusId = company['companyStatusId'];
+                  final companyStatusName = company['companyStatusName'] ?? '';
+                  final userStatusId = company['userStatusId'] ?? 1;
+                  final userStatusName = company['userStatusName'] ?? '';
                   final isAdmin = adminStatusByCompany[companyId] ?? false;
                   final hasRightToInsertBranch =
                       canInsertBranchByCompany[companyId] ?? false;
                   final hasRightToInsertUsers =
                       canInsertUserByCompany[companyId] ?? false;
-
+                  final isDisabled =
+                      (statusId == 2 ||
+                      statusId == 3 ||
+                      userStatusId == 2 ||
+                      userStatusId == 3);
                   return Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    elevation: 8,
-                    shadowColor: Colors.black.withOpacity(0.1),
-                    margin: const EdgeInsets.only(bottom: 20),
                     color: Colors.white,
+                    elevation: 8,
+                    margin: const EdgeInsets.only(bottom: 20),
                     child: Padding(
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         children: [
-                          Center(
-                            child: Text(
-                              company['companyName'] ?? 'بدون اسم',
-                              style: GoogleFonts.tajawal(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: secondaryColor,
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Centered Title
+                              Center(
+                                child: Text(
+                                  company['companyName'] ?? '',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: secondaryColor,
+                                  ),
+                                ),
                               ),
-                              textAlign: TextAlign.center,
-                              overflow: TextOverflow.ellipsis,
+
+                              if (canDeleteCompany[companyId] == true)
+                                Positioned(
+                                  right: 0,
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_forever,
+                                      color: Colors.red,
+                                      size: 26,
+                                    ),
+                                    tooltip: "حذف الشركة",
+                                    onPressed: () => deleteCompany(companyId),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "حالة الشركة: $companyStatusName\nحالة المستخدم: $userStatusName",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.tajawal(
+                              fontSize: 16,
+                              color: Colors.grey[700],
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -363,19 +636,24 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                             children: [
                               Expanded(
                                 child: InkWell(
-                                  onTap: () => navigateToPage(
-                                    LoginViewWithAdmin(companyId: companyId),
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
+                                      ? null
+                                      : () => _showBranchesBeforeNavigate(
+                                          companyId,
+                                        ),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 10,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
+                                      color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
+                                          ? Colors.grey.shade300
+                                          : Colors.blue.shade50,
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
-                                        color: Colors.blue.shade100,
+                                        color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
+                                            ? Colors.grey
+                                            : Colors.blue.shade100,
                                       ),
                                     ),
                                     child: Column(
@@ -384,6 +662,9 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                           'assets/icons/stock_control.jpg',
                                           width: 30,
                                           height: 30,
+                                          color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
+                                              ? Colors.grey
+                                              : null,
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
@@ -391,7 +672,9 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                           style: GoogleFonts.tajawal(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
-                                            color: Colors.blue.shade800,
+                                            color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
+                                                ? Colors.grey
+                                                : Colors.blue.shade800,
                                           ),
                                         ),
                                       ],
@@ -410,29 +693,36 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                           hasRightToInsertUsers)))
                                 Expanded(
                                   child: InkWell(
-                                    onTap: () => navigateToPage(
-                                      MainLayout(
-                                        userId: widget.userId,
-                                        companyName: company['companyName'],
-                                        companyId: companyId,
-                                        isAdmin: isAdmin,
-                                        companyStatus: company['statusId'],
-                                        hasRightToInsertBranch:
-                                            hasRightToInsertBranch,
-                                        hasRightToInsertUsers:
-                                            hasRightToInsertUsers,
-                                      ),
-                                    ),
+                                    onTap: isDisabled
+                                        ? null
+                                        : () => navigateToPage(
+                                            MainLayout(
+                                              userId: widget.userId,
+                                              companyName:
+                                                  company['companyName'],
+                                              companyId: companyId,
+                                              isAdmin: isAdmin,
+                                              companyStatus: statusId,
+                                              hasRightToInsertBranch:
+                                                  hasRightToInsertBranch,
+                                              hasRightToInsertUsers:
+                                                  hasRightToInsertUsers,
+                                            ),
+                                          ),
                                     borderRadius: BorderRadius.circular(16),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 10,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
+                                        color: isDisabled
+                                            ? Colors.grey.shade300
+                                            : Colors.green.shade50,
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: Colors.green.shade100,
+                                          color: isDisabled
+                                              ? Colors.grey
+                                              : Colors.green.shade100,
                                         ),
                                       ),
                                       child: Column(
@@ -440,7 +730,9 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                           Icon(
                                             Icons.business,
                                             size: 30,
-                                            color: Colors.green.shade700,
+                                            color: isDisabled
+                                                ? Colors.grey
+                                                : Colors.green.shade700,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
@@ -448,7 +740,9 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                             style: GoogleFonts.tajawal(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.green.shade800,
+                                              color: isDisabled
+                                                  ? Colors.grey
+                                                  : Colors.green.shade800,
                                             ),
                                           ),
                                         ],
@@ -467,9 +761,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                   children: [
                                     Ink(
                                       decoration: ShapeDecoration(
-                                        color:
-                                            (company['statusId'] == 2 ||
-                                                company['statusId'] == 3)
+                                        color: (statusId == 2 || statusId == 3)
                                             ? Colors.grey
                                             : Colors.redAccent,
                                         shape: const CircleBorder(),
@@ -481,11 +773,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                           size: 28,
                                         ),
                                         onPressed:
-                                            (company['statusId'] == 2 ||
-                                                company['statusId'] == 3)
+                                            (statusId == 2 || statusId == 3)
                                             ? null
                                             : () => toggleCompanyStatus(
-                                                company['companyId'],
+                                                companyId,
                                                 2,
                                               ),
                                       ),
@@ -496,9 +787,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                       style: GoogleFonts.tajawal(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
-                                        color:
-                                            (company['statusId'] == 2 ||
-                                                company['statusId'] == 3)
+                                        color: (statusId == 2 || statusId == 3)
                                             ? Colors.grey
                                             : Colors.black,
                                       ),
@@ -509,7 +798,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                   children: [
                                     Ink(
                                       decoration: ShapeDecoration(
-                                        color: (company['statusId'] == 1)
+                                        color: (statusId == 1)
                                             ? Colors.grey
                                             : Colors.orange,
                                         shape: const CircleBorder(),
@@ -520,10 +809,10 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                           color: Colors.white,
                                           size: 28,
                                         ),
-                                        onPressed: (company['statusId'] == 1)
+                                        onPressed: (statusId == 1)
                                             ? null
                                             : () => toggleCompanyStatus(
-                                                company['companyId'],
+                                                companyId,
                                                 1,
                                               ),
                                       ),
@@ -534,7 +823,7 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                       style: GoogleFonts.tajawal(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
-                                        color: (company['statusId'] == 1)
+                                        color: (statusId == 1)
                                             ? Colors.grey
                                             : Colors.black,
                                       ),

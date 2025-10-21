@@ -29,7 +29,7 @@
 
     Future<void> fetchBranches() async {
       final url = Uri.parse(
-          'http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=${widget.companyId}');
+          'http://197.134.252.181/StockGuideAPI/User/UserGetAllByCompanyIdWithStatus?companyId=${widget.companyId}');
 
       final response = await http.get(url);
 
@@ -40,25 +40,28 @@
 
         if (decoded is Map<String, dynamic> &&
             decoded.containsKey('data') &&
-            decoded['data'] is Map<String, dynamic>) {
+            decoded['data'] is List) {
+          final List<dynamic> users = decoded['data'];
 
-          final data = decoded['data'];
-
-          final List<dynamic> users = data['currentUnpaidSubscription'] ?? [];
+          final workingCompanies = users.where((item) {
+            final statusId = item['statusId'];
+            return statusId == 1;
+          }).toList();
 
           setState(() {
-            mobiles = users.map<Map<String, dynamic>>((item) {
-              final displayName = item['displayName']?.toString() ?? "";
-              final mobileNo = item['mobile']?.toString() ?? "";
+            mobiles = workingCompanies.map<Map<String, dynamic>>((item) {
+              final userName = item['userName']?.toString() ?? "";
+              final mobileNo = item['mobileNO']?.toString() ?? "";
+              final userNameInApp = item['userNameInApp']?.toString() ?? "";
+              final statusName = item['statusName']?.toString() ?? "";
+              final statusId = item['statusId'];
 
               return {
                 'id': item['userId'],
-                'name': "$displayName - $mobileNo",
-                'mobile': item['mobile'],
-                'fees': item['fees'],
-                'noMonth': item['noMonth'],
-                'isPaid': item['isPaid'],
-                'subscription': item['currentSubscribtion'],
+                'name': "$userNameInApp - $userName",
+                'mobile': mobileNo,
+                'statusName': statusName,
+                'statusId': statusId,
               };
             }).toList();
 
@@ -71,7 +74,7 @@
         setState(() {
           isLoading = false;
         });
-        throw Exception('Failed to fetch branches');
+        throw Exception('Failed to fetch users');
       }
     }
 
@@ -165,14 +168,19 @@
         "fromUserId": widget.userId,
       });
 
+      print(body);
+
       final response = await http.post(
         Uri.parse('http://197.134.252.181/StockGuideAPI/User/EditUserStatus'),
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
 
+      print(response.body);
+
       if (response.statusCode == 200) {
         await showMessageDialog('✅ تم تغيير حالة الموبايل بنجاح');
+        Navigator.pop(context);
       } else {
         await showMessageDialog('❌ فشل في تغيير حالة الموبايل');
       }
