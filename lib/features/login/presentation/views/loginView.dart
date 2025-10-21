@@ -11,6 +11,7 @@ import '../../../../core/utils/assets.dart';
 import '../../../home/presentation/views/HomeView.dart';
 import '../../../home/presentation/views/HomeViewWithComp.dart';
 import '../../../signup/presentation/views/signup.dart';
+import 'forgetPassword.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -173,116 +174,23 @@ class _LoginViewState extends State<LoginView> {
                           alignment: Alignment.centerLeft,
                         ),
                         onPressed: () async {
-                          final String phone = phoneController.text.trim();
-                          final String password = passwordController.text;
+                          final prefs = await SharedPreferences.getInstance();
+                          final userId = prefs.getString('userId');
 
-                          if (phone.isEmpty || password.isEmpty) {
+                          if (userId == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('الرجاء إدخال رقم الموبايل وكلمة المرور'),
-                                backgroundColor: Colors.red,
-                              ),
+                              const SnackBar(content: Text("UserId غير موجود")),
                             );
                             return;
                           }
 
-                          final arabicRegex = RegExp(r'[\u0600-\u06FF\u0660-\u0669]');
-                          if (arabicRegex.hasMatch(password)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('كلمة المرور يجب أن تحتوي على أحرف وأرقام إنجليزية فقط ❌'),
-                                backgroundColor: Colors.red,
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ForgotPasswordView(userId: userId),
                               ),
-                            );
-                            return;
-                          }
-
-                          final Uri loginUrl = Uri.parse('http://197.134.252.181/StockGuideAPI/User/login');
-                          final Map<String, dynamic> loginBody = {
-                            "userName": phone,
-                            "password": password,
-                          };
-
-                          try {
-                            final loginResponse = await http.post(
-                              loginUrl,
-                              headers: {'Content-Type': 'application/json'},
-                              body: jsonEncode(loginBody),
-                            );
-
-                            final loginJson = jsonDecode(loginResponse.body);
-                            print("Login Response: $loginJson");
-
-                            if (loginJson['status'] == 1) {
-                              final String userId = loginJson['data']['userId'];
-
-                              // ✅ Extract userCurrentSubIsPaid
-                              final companies = loginJson['data']['returnUserCompaniesStatus'] as List<dynamic>;
-                              bool userCurrentSubIsPaid = false;
-                              if (companies.isNotEmpty) {
-                                userCurrentSubIsPaid = companies[0]['userCurrentSubIsPaid'] ?? false;
-                              }
-
-                              print("//////////////////////");
-                              print("userCurrentSubIsPaid: $userCurrentSubIsPaid");
-                              print("//////////////////////");
-
-                              // ✅ Store in SharedPreferences (optional)
-                              final prefs = await SharedPreferences.getInstance();
-                              await prefs.setString('userId', userId);
-                              await prefs.setBool('userCurrentSubIsPaid', userCurrentSubIsPaid);
-
-                              // ✅ Fetch companies
-                              final companyUrl = Uri.parse(
-                                'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=$userId',
-                              );
-
-                              final companyResponse = await http.get(companyUrl);
-                              final companyJson = jsonDecode(companyResponse.body);
-
-                              print("Company Response: $companyJson");
-
-                              if (companyJson['status'] == 1 &&
-                                  companyJson['data'] != null &&
-                                  companyJson['data'].isNotEmpty) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => HomeWithCompanies(
-                                      userId: userId,
-                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => HomeView(
-                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here too
-                                    ),
-                                  ),
-                                );
-                              }
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    loginJson['returnMessage'] ?? 'فشل تسجيل الدخول',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            print("Login Error: $e");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('حدث خطأ أثناء الاتصال بالسيرفر'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
+                          );
                         },
                         child: Text(
                           'نسيت كلمة السر؟',
