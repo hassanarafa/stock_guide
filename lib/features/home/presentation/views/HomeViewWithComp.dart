@@ -15,7 +15,11 @@ class HomeWithCompanies extends StatefulWidget {
   final String userId;
   final bool userCurrentSubIsPaid;
 
-  const HomeWithCompanies({super.key, required this.userId, required this.userCurrentSubIsPaid});
+  const HomeWithCompanies({
+    super.key,
+    required this.userId,
+    required this.userCurrentSubIsPaid,
+  });
 
   @override
   State<HomeWithCompanies> createState() => _HomeWithCompaniesState();
@@ -95,39 +99,35 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
     }
   }
 
-  Future<void> _showBranchesBeforeNavigate(int companyId) async {
+  Future<void> _showBranchesBeforeNavigate(Map<String, dynamic> company) async {
+    final companyId = company['companyId'];
+    final companyName = company['companyName'] ?? '';
+
     try {
       final url = Uri.parse(
         "http://197.134.252.181/StockGuideAPI/Branch/GetAllBranchesByCompanyIdInRenew?companyId=$companyId",
       );
       final response = await http.get(url);
+
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['status'] == 1 && decoded['data'] != null) {
           final data = decoded['data'];
           List<Map<String, dynamic>> allBranches = [];
           if (data['noSubscriptionEver'] is List) {
-            allBranches.addAll(
-              List<Map<String, dynamic>>.from(data['noSubscriptionEver']),
-            );
+            allBranches.addAll(List<Map<String, dynamic>>.from(data['noSubscriptionEver']));
           }
           if (data['currentUnpaidSubscription'] is List) {
-            allBranches.addAll(
-              List<Map<String, dynamic>>.from(
-                data['currentUnpaidSubscription'],
-              ),
-            );
+            allBranches.addAll(List<Map<String, dynamic>>.from(data['currentUnpaidSubscription']));
           }
           if (data['noActiveSubscriptionToday'] is List) {
-            allBranches.addAll(
-              List<Map<String, dynamic>>.from(
-                data['noActiveSubscriptionToday'],
-              ),
-            );
+            allBranches.addAll(List<Map<String, dynamic>>.from(data['noActiveSubscriptionToday']));
           }
-          List<Map<String, dynamic>> paidBranches = allBranches
-              .where((branch) => branch['isPaid'] == true)
-              .toList();
+
+          final paidBranches = allBranches.where(
+                (b) => (b['isPaid'] == true) && (b['currentStatusId'] == 1),
+          ).toList();
+
           await showDialog(
             context: context,
             builder: (context) {
@@ -144,43 +144,48 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                   width: double.maxFinite,
                   child: paidBranches.isEmpty
                       ? Center(
-                          child: Text(
-                            "لا توجد فروع مدفوعة لهذه الشركة",
+                    child: Text(
+                      "لا توجد فروع سارية لهذه الشركة",
+                      style: GoogleFonts.tajawal(fontSize: 16),
+                    ),
+                  )
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: paidBranches.length,
+                    itemBuilder: (context, index) {
+                      final branch = paidBranches[index];
+                      final branchId = branch['branchId'];
+                      final branchName = branch['branchName'] ?? '';
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          title: Text(
+                            branchName,
                             style: GoogleFonts.tajawal(fontSize: 16),
                           ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: paidBranches.length,
-                          itemBuilder: (context, index) {
-                            final branch = paidBranches[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              child: ListTile(
-                                title: Text(
-                                  branch['branchName'] ?? 'بدون اسم',
-                                  style: GoogleFonts.tajawal(fontSize: 16),
+                          leading: const Icon(
+                            Icons.store,
+                            color: Colors.green,
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => LoginViewWithAdmin(
+                                  companyId: companyId,
+                                  branchId: branchId,
+                                  companyName: companyName,
+                                  branchName: branchName,
                                 ),
-                                leading: const Icon(
-                                  Icons.store,
-                                  color: Colors.green,
-                                ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => LoginViewWithAdmin(
-                                        companyId: companyId,
-                                        branchId: branch['branchId'],
-                                      ),
-                                    ),
-                                  );
-                                },
                               ),
                             );
                           },
                         ),
+                      );
+                    },
+                  ),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -561,188 +566,141 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                   style: GoogleFonts.tajawal(fontSize: 18),
                 ),
               )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: companyList.length,
-                itemBuilder: (context, index) {
-                  final company = companyList[index];
-                  final companyId = company['companyId'];
-                  final statusId = company['companyStatusId'];
-                  final companyStatusName = company['companyStatusName'] ?? '';
-                  final userStatusId = company['userStatusId'] ?? 1;
-                  final userStatusName = company['userStatusName'] ?? '';
-                  final isAdmin = adminStatusByCompany[companyId] ?? false;
-                  final hasRightToInsertBranch =
-                      canInsertBranchByCompany[companyId] ?? false;
-                  final hasRightToInsertUsers =
-                      canInsertUserByCompany[companyId] ?? false;
-                  final isDisabled =
-                      (statusId == 2 ||
-                      statusId == 3 ||
-                      userStatusId == 2 ||
-                      userStatusId == 3);
-                  return Card(
-                    color: Colors.white,
-                    elevation: 8,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        children: [
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Centered Title
-                              Center(
-                                child: Text(
-                                  company['companyName'] ?? '',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.tajawal(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                    color: secondaryColor,
+            : RefreshIndicator(
+                onRefresh: () async => await fetchCompanies(),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: companyList.length,
+                  itemBuilder: (context, index) {
+                    final company = companyList[index];
+                    final companyId = company['companyId'];
+                    final statusId = company['companyStatusId'];
+                    final companyStatusName =
+                        company['companyStatusName'] ?? '';
+                    final userStatusId = company['userStatusId'] ?? 1;
+                    final userStatusName = company['userStatusName'] ?? '';
+                    final isAdmin = adminStatusByCompany[companyId] ?? false;
+                    final hasRightToInsertBranch =
+                        canInsertBranchByCompany[companyId] ?? false;
+                    final hasRightToInsertUsers =
+                        canInsertUserByCompany[companyId] ?? false;
+                    final isDisabled =
+                        (statusId == 2 ||
+                        statusId == 3 ||
+                        userStatusId == 2 ||
+                        userStatusId == 3);
+                    return Card(
+                      color: Colors.white,
+                      elevation: 8,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // Centered Title
+                                Center(
+                                  child: Text(
+                                    company['companyName'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.tajawal(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: secondaryColor,
+                                    ),
                                   ),
                                 ),
-                              ),
 
-                              if (canDeleteCompany[companyId] == true)
-                                Positioned(
-                                  right: 0,
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_forever,
-                                      color: Colors.red,
-                                      size: 26,
-                                    ),
-                                    tooltip: "حذف الشركة",
-                                    onPressed: () => deleteCompany(companyId),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "حالة الشركة: $companyStatusName\nحالة المستخدم: $userStatusName",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.tajawal(
-                              fontSize: 16,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Divider(color: Colors.grey.shade300, thickness: 1),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
-                                      ? null
-                                      : () => _showBranchesBeforeNavigate(
-                                          companyId,
-                                        ),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
-                                          ? Colors.grey.shade300
-                                          : Colors.blue.shade50,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
-                                            ? Colors.grey
-                                            : Colors.blue.shade100,
+                                if (canDeleteCompany[companyId] == true)
+                                  Positioned(
+                                    right: 0,
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_forever,
+                                        color: Colors.red,
+                                        size: 26,
                                       ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Image.asset(
-                                          'assets/icons/stock_control.jpg',
-                                          width: 30,
-                                          height: 30,
-                                          color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
-                                              ? Colors.grey
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Stock Control',
-                                          style: GoogleFonts.tajawal(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: !isAdmin && (isDisabled || widget.userCurrentSubIsPaid == false)
-                                                ? Colors.grey
-                                                : Colors.blue.shade800,
-                                          ),
-                                        ),
-                                      ],
+                                      tooltip: "حذف الشركة",
+                                      onPressed: () => deleteCompany(companyId),
                                     ),
                                   ),
-                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "حالة الشركة: $companyStatusName\nحالة المستخدم: $userStatusName",
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.tajawal(
+                                fontSize: 16,
+                                color: Colors.grey[700],
                               ),
-                              if (isAdmin ||
-                                  (!isAdmin &&
-                                      (hasRightToInsertBranch ||
-                                          hasRightToInsertUsers)))
-                                const SizedBox(width: 40),
-                              if (isAdmin ||
-                                  (!isAdmin &&
-                                      (hasRightToInsertBranch ||
-                                          hasRightToInsertUsers)))
+                            ),
+                            const SizedBox(height: 12),
+                            Divider(color: Colors.grey.shade300, thickness: 1),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
                                 Expanded(
                                   child: InkWell(
-                                    onTap: isDisabled
+                                    onTap: (isAdmin && isDisabled) || (!isAdmin && (isDisabled || !widget.userCurrentSubIsPaid))
                                         ? null
-                                        : () => navigateToPage(
-                                            MainLayout(
-                                              userId: widget.userId,
-                                              companyName:
-                                                  company['companyName'],
-                                              companyId: companyId,
-                                              isAdmin: isAdmin,
-                                              companyStatus: statusId,
-                                              hasRightToInsertBranch:
-                                                  hasRightToInsertBranch,
-                                              hasRightToInsertUsers:
-                                                  hasRightToInsertUsers,
-                                            ),
-                                          ),
-                                    borderRadius: BorderRadius.circular(16),
+                                        : () => _showBranchesBeforeNavigate(company),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 10,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: isDisabled
+                                        color:
+                                            (isAdmin && isDisabled) ||
+                                                (!isAdmin &&
+                                                    (isDisabled ||
+                                                        widget.userCurrentSubIsPaid ==
+                                                            false))
                                             ? Colors.grey.shade300
-                                            : Colors.green.shade50,
+                                            : Colors.blue.shade50,
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: isDisabled
+                                          color:
+                                              (isAdmin && isDisabled) ||
+                                                  (!isAdmin &&
+                                                      (isDisabled ||
+                                                          widget.userCurrentSubIsPaid ==
+                                                              false))
                                               ? Colors.grey
-                                              : Colors.green.shade100,
+                                              : Colors.blue.shade100,
                                         ),
                                       ),
                                       child: Column(
                                         children: [
-                                          Icon(
-                                            Icons.business,
-                                            size: 30,
-                                            color: isDisabled
+                                          Image.asset(
+                                            'assets/icons/stock_control.jpg',
+                                            width: 30,
+                                            height: 30,
+                                            color:
+                                                (isAdmin && isDisabled) ||
+                                                    (!isAdmin &&
+                                                        (isDisabled ||
+                                                            widget.userCurrentSubIsPaid ==
+                                                                false))
                                                 ? Colors.grey
-                                                : Colors.green.shade700,
+                                                : null,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'إدارة الشركة',
+                                            'Stock Control',
                                             style: GoogleFonts.tajawal(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w600,
-                                              color: isDisabled
+                                              color:
+                                                  (isAdmin && isDisabled) ||
+                                                      (!isAdmin &&
+                                                          (isDisabled ||
+                                                              widget.userCurrentSubIsPaid ==
+                                                                  false))
                                                   ? Colors.grey
-                                                  : Colors.green.shade800,
+                                                  : Colors.blue.shade800,
                                             ),
                                           ),
                                         ],
@@ -750,93 +708,167 @@ class _HomeWithCompaniesState extends State<HomeWithCompanies> {
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          if (isAdmin)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Column(
-                                  children: [
-                                    Ink(
-                                      decoration: ShapeDecoration(
-                                        color: (statusId == 2 || statusId == 3)
-                                            ? Colors.grey
-                                            : Colors.redAccent,
-                                        shape: const CircleBorder(),
-                                      ),
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.stop,
-                                          color: Colors.white,
-                                          size: 28,
-                                        ),
-                                        onPressed:
-                                            (statusId == 2 || statusId == 3)
-                                            ? null
-                                            : () => toggleCompanyStatus(
-                                                companyId,
-                                                2,
+                                if (isAdmin ||
+                                    (!isAdmin &&
+                                        (hasRightToInsertBranch ||
+                                            hasRightToInsertUsers)))
+                                  const SizedBox(width: 40),
+                                if (isAdmin ||
+                                    (!isAdmin &&
+                                        (hasRightToInsertBranch ||
+                                            hasRightToInsertUsers)))
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: isDisabled
+                                          ? null
+                                          : () => navigateToPage(
+                                              MainLayout(
+                                                userId: widget.userId,
+                                                companyName:
+                                                    company['companyName'],
+                                                companyId: companyId,
+                                                isAdmin: isAdmin,
+                                                companyStatus: statusId,
+                                                hasRightToInsertBranch:
+                                                    hasRightToInsertBranch,
+                                                hasRightToInsertUsers:
+                                                    hasRightToInsertUsers,
                                               ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      "إيقاف دائم",
-                                      style: GoogleFonts.tajawal(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: (statusId == 2 || statusId == 3)
-                                            ? Colors.grey
-                                            : Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    Ink(
-                                      decoration: ShapeDecoration(
-                                        color: (statusId == 1)
-                                            ? Colors.grey
-                                            : Colors.orange,
-                                        shape: const CircleBorder(),
-                                      ),
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.restart_alt,
-                                          color: Colors.white,
-                                          size: 28,
+                                            ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 10,
                                         ),
-                                        onPressed: (statusId == 1)
-                                            ? null
-                                            : () => toggleCompanyStatus(
-                                                companyId,
-                                                1,
+                                        decoration: BoxDecoration(
+                                          color: isDisabled
+                                              ? Colors.grey.shade300
+                                              : Colors.green.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          border: Border.all(
+                                            color: isDisabled
+                                                ? Colors.grey
+                                                : Colors.green.shade100,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.business,
+                                              size: 30,
+                                              color: isDisabled
+                                                  ? Colors.grey
+                                                  : Colors.green.shade700,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'إدارة الشركة',
+                                              style: GoogleFonts.tajawal(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDisabled
+                                                    ? Colors.grey
+                                                    : Colors.green.shade800,
                                               ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      "إعادة تشغيل",
-                                      style: GoogleFonts.tajawal(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: (statusId == 1)
-                                            ? Colors.grey
-                                            : Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
                               ],
                             ),
-                        ],
+                            const SizedBox(height: 24),
+                            if (isAdmin)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Column(
+                                    children: [
+                                      Ink(
+                                        decoration: ShapeDecoration(
+                                          color:
+                                              (statusId == 2 || statusId == 3)
+                                              ? Colors.grey
+                                              : Colors.redAccent,
+                                          shape: const CircleBorder(),
+                                        ),
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.stop,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                          onPressed:
+                                              (statusId == 2 || statusId == 3)
+                                              ? null
+                                              : () => toggleCompanyStatus(
+                                                  companyId,
+                                                  2,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        "إيقاف دائم",
+                                        style: GoogleFonts.tajawal(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color:
+                                              (statusId == 2 || statusId == 3)
+                                              ? Colors.grey
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Column(
+                                    children: [
+                                      Ink(
+                                        decoration: ShapeDecoration(
+                                          color: (statusId == 1)
+                                              ? Colors.grey
+                                              : Colors.orange,
+                                          shape: const CircleBorder(),
+                                        ),
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.restart_alt,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                          onPressed: (statusId == 1)
+                                              ? null
+                                              : () => toggleCompanyStatus(
+                                                  companyId,
+                                                  1,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        "إعادة تشغيل",
+                                        style: GoogleFonts.tajawal(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: (statusId == 1)
+                                              ? Colors.grey
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
       ),
     );

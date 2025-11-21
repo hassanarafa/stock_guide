@@ -219,6 +219,9 @@ class _AddBranchState extends State<AddBranch> {
         .where((b) => b['checked'] == true)
         .toList();
 
+    print("=====================================");
+    print(selectedBranches);
+    print("=====================================");
     if (selectedBranches.isEmpty) {
       showMessageDialog("يرجى اختيار فرع واحد على الأقل");
       return;
@@ -319,12 +322,28 @@ class _AddBranchState extends State<AddBranch> {
     );
     var request = http.MultipartRequest("POST", uri);
 
-    for (var branch in selectedBranches) {
-      request.fields.putIfAbsent(
-        'SubscribtionBranchIds[${selectedBranches.indexOf(branch)}]',
-        () => branch['id'].toString(),
-      );
+    // for (var branch in selectedBranches) {
+    //   print(selectedBranches.indexOf(branch));
+    //
+    //   request.fields.putIfAbsent(
+    //     'SubscribtionBranchIds[${selectedBranches.indexOf(branch)}]',
+    //     () => branch['id'].toString(),
+    //   );
+    // }
+    //
+    // print(request.fields);
+    //
+    // request.files.add(await http.MultipartFile.fromPath('File', file.path));
+
+    print("/////////////////////////////////");
+    print(selectedBranches);
+    print("/////////////////////////////////");
+
+    for (int i = 0; i < selectedBranches.length; i++) {
+      request.fields['SubscribtionBranchIds[$i]'] = selectedBranches[i]['id'].toString();
     }
+
+    print(request.fields);
 
     request.files.add(await http.MultipartFile.fromPath('File', file.path));
 
@@ -341,6 +360,10 @@ class _AddBranchState extends State<AddBranch> {
       }
       var response = await request.send();
       Navigator.of(context).pop();
+
+      var responseBody = await response.stream.bytesToString();
+      print("Status: ${response.statusCode}");
+      print("Body: $responseBody");
 
       if (response.statusCode == 200) {
         showMessageDialog("تم رفع الإيصال بنجاح ✅");
@@ -399,7 +422,9 @@ class _AddBranchState extends State<AddBranch> {
               'checked': false,
             });
           }
+          print("/*/*/*/*/*/*/*");
           print(_branches);
+          print("/*/*/*/*/*/*/*");
         });
       } else {
         showMessageDialog("فشل في تحميل الفروع غير المدفوعة");
@@ -691,6 +716,10 @@ class _AddBranchState extends State<AddBranch> {
                                       response.body,
                                     );
 
+                                    print("------------------------------------");
+                                    print(responseData);
+                                    print("------------------------------------");
+
                                     if (responseData['status'] == 1 &&
                                         responseData['data'] != null) {
                                       final branchId =
@@ -712,6 +741,7 @@ class _AddBranchState extends State<AddBranch> {
                                         branchController.clear();
                                         _selectedFee = _feeOptions.first;
                                       });
+                                      await fetchUnpaidBranches(widget.companyId);
 
                                       showMessageDialog(
                                         'تمت إضافة الفرع بنجاح ✅',

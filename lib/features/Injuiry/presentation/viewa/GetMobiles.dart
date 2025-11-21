@@ -13,6 +13,7 @@ class UserModel {
   final String name;
   final bool isPaid;
   final String? currentSubscribtion;
+  final int? currentStatusId; // ✅ Added
   int? noMonths;
   int? fees;
 
@@ -24,6 +25,7 @@ class UserModel {
     this.currentSubscribtion,
     this.noMonths,
     this.fees,
+    this.currentStatusId, // ✅ Added
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,7 +34,14 @@ class UserModel {
       mobile: json['mobile'] ?? "",
       name: json['displayName'] ?? "",
       isPaid: json['isPaid'] ?? false,
+      noMonths: json['noMonths'] ?? json['noMonth'],
+      fees: (json['fees'] is int)
+          ? json['fees']
+          : (json['fees'] is double)
+          ? (json['fees'] as double).toInt()
+          : int.tryParse(json['fees']?.toString() ?? ''),
       currentSubscribtion: json['currentSubscribtion'],
+      currentStatusId: json['currentStatusId'], // ✅ Added
     );
   }
 }
@@ -58,7 +67,6 @@ class _GetMobilesState extends State<GetMobiles> {
     fetchUsers();
   }
 
-  /// دالة الرسائل
   Future<void> showMessageDialog(String message) async {
     await showDialog(
       context: context,
@@ -89,6 +97,32 @@ class _GetMobilesState extends State<GetMobiles> {
         );
       },
     );
+  }
+
+  Color _getStatusColor(int? statusId) {
+    switch (statusId) {
+      case 1:
+        return Colors.green; // Active
+      case 3:
+        return Colors.orange; // Needs renewal
+      case 2:
+        return Colors.red; // Expired or problem
+      default:
+        return Colors.grey; // Unknown
+    }
+  }
+
+  IconData _getStatusIcon(int? statusId) {
+    switch (statusId) {
+      case 1:
+        return Icons.check;
+      case 3:
+        return Icons.warning_amber_rounded;
+      case 2:
+        return Icons.close;
+      default:
+        return Icons.help_outline;
+    }
   }
 
   Future<bool> _checkInternet() async {
@@ -126,23 +160,6 @@ class _GetMobilesState extends State<GetMobiles> {
         List<UserModel> loadedUsers =
         allUsers.map((json) => UserModel.fromJson(json)).toList();
 
-        final settings = await fetchUserFeeSettings();
-        for (var user in loadedUsers) {
-          if (settings.isNotEmpty) {
-            user.noMonths = settings.first['noMonths'];
-            final feeValue = settings.first['fees'];
-            if (feeValue != null) {
-              if (feeValue is double) {
-                user.fees = feeValue.toInt();
-              } else if (feeValue is int) {
-                user.fees = feeValue;
-              } else {
-                user.fees = int.tryParse(feeValue.toString());
-              }
-            }
-          }
-        }
-
         setState(() {
           users = loadedUsers;
           isLoading = false;
@@ -154,29 +171,6 @@ class _GetMobilesState extends State<GetMobiles> {
       print("Error fetching users: $e");
       setState(() => isLoading = false);
     }
-  }
-
-  Future<List<Map<String, dynamic>>> fetchUserFeeSettings() async {
-    if (!await _checkInternet()) {
-      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
-      return [];
-    }
-
-    final url = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/User/GetSettingOfUserFeesInFirstTime",
-    );
-
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        final List<dynamic> data = body['data'] ?? [];
-        return data.cast<Map<String, dynamic>>();
-      }
-    } catch (e) {
-      print("Error fetching user fee settings: $e");
-    }
-    return [];
   }
 
   Future<void> updateUser(
@@ -393,16 +387,11 @@ class _GetMobilesState extends State<GetMobiles> {
                                   ],
                                 ),
                               ),
-                              CircleAvatar(
+                              CircleAvatar (
                                 radius: 16,
-                                backgroundColor: user.isPaid
-                                    ? Colors.green
-                                    : Colors.orange,
+                                backgroundColor: _getStatusColor(user.currentStatusId),
                                 child: Icon(
-                                  user.isPaid
-                                      ? Icons.check
-                                      : Icons
-                                      .warning_amber_rounded,
+                                  _getStatusIcon(user.currentStatusId),
                                   color: Colors.white,
                                   size: 20,
                                 ),

@@ -6,15 +6,19 @@ import 'package:http/http.dart' as http;
 class RestartBranch extends StatefulWidget {
   final int companyId;
   final String userId;
-  const RestartBranch({super.key, required this.companyId, required this.userId});
+
+  const RestartBranch({
+    super.key,
+    required this.companyId,
+    required this.userId,
+  });
 
   @override
   State<RestartBranch> createState() => _RestartBranchState();
 }
 
 class _RestartBranchState extends State<RestartBranch> {
-  int selectedTab = 0;
-  bool isTemporaryStop = true;
+  bool isTemporaryStop = false; // no date required
   TextEditingController dateController = TextEditingController();
 
   List<dynamic> branches = [];
@@ -44,30 +48,32 @@ class _RestartBranchState extends State<RestartBranch> {
 
           setState(() {
             branches = data
-                .where((item) => item['statusId'] == 2 || item['statusId'] == 3)
+                .where((item) =>
+            item['isCurrentSubIsValid'] == true &&
+                (item['statusId'] == 2 || item['statusId'] == 3))
                 .map<Map<String, dynamic>>((item) {
               return {
                 'id': item['branchId'],
                 'name': item['branchName'],
                 'statusId': item['statusId'],
+                'isCurrentSubIsValid': item['isCurrentSubIsValid'],
               };
             }).toList();
+
             isLoading = false;
           });
+
+          print("✅ Filtered branches: $branches");
         } else {
           throw Exception('Unexpected response format');
         }
       } else {
-        setState(() {
-          isLoading = false;
-        });
-        throw Exception('Failed to fetch branches');
+        setState(() => isLoading = false);
+        print("❌ Failed to fetch branches: ${response.statusCode}");
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      print("Error fetching branches: $e");
+      setState(() => isLoading = false);
+      print("⚠️ Error fetching branches: $e");
     }
   }
 
@@ -78,7 +84,7 @@ class _RestartBranchState extends State<RestartBranch> {
     }
 
     final branchId = _selectedBranch!['id'];
-    final newStatusId = 1;
+    const newStatusId = 1; // تشغيل
 
     String? toStatusDate;
     if (isTemporaryStop) {
@@ -108,11 +114,16 @@ class _RestartBranchState extends State<RestartBranch> {
       "userId": widget.userId
     });
 
+    print("📤 Sending: $body");
+
     final response = await http.post(
       Uri.parse('http://197.134.252.181/StockGuideAPI/Branch/EditStatus'),
       headers: {'Content-Type': 'application/json'},
       body: body,
     );
+
+    print("📥 Response status: ${response.statusCode}");
+    print("📥 Response body: ${response.body}");
 
     if (response.statusCode == 200) {
       setState(() {
@@ -171,7 +182,9 @@ class _RestartBranchState extends State<RestartBranch> {
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
+            child: isLoading
+                ? const CircularProgressIndicator()
+                : Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
@@ -184,6 +197,7 @@ class _RestartBranchState extends State<RestartBranch> {
                 ),
                 const SizedBox(height: 20),
 
+                // Branch dropdown
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
@@ -203,86 +217,28 @@ class _RestartBranchState extends State<RestartBranch> {
                             color: Colors.black,
                             fontSize: 16,
                           ),
-                          onChanged: (Map<String, dynamic>? newValue) {
+                          onChanged:
+                              (Map<String, dynamic>? newValue) async {
                             setState(() {
                               _selectedBranch = newValue;
                             });
                           },
-                          items: branches.map<DropdownMenuItem<Map<String, dynamic>>>((branch) {
-                            return DropdownMenuItem<Map<String, dynamic>>(
-                              value: branch,
-                              child: Text(branch["name"]),
-                            );
-                          }).toList(),
+                          items: branches
+                              .map<DropdownMenuItem<Map<String, dynamic>>>(
+                                  (branch) {
+                                return DropdownMenuItem<
+                                    Map<String, dynamic>>(
+                                  value: branch,
+                                  child: Text(branch["name"]),
+                                );
+                              }).toList(),
                         ),
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: buildToggleButton("تشغيل دائم", false),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: buildToggleButton("تشغيل مؤقت", true),
-                      ),
-                    ],
-                  ),
-                ),
-
-
-                if (isTemporaryStop)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("حتى تاريخ:", style: GoogleFonts.tajawal(fontSize: 16)),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: dateController,
-                          decoration: InputDecoration(
-                            hintText: "ادخل التاريخ",
-                            hintStyle: GoogleFonts.tajawal(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                            ),
-                            prefixIcon: Icon(Icons.calendar_today, color: Colors.lightBlue),
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.blue),
-                            ),
-                          ),
-                          readOnly: true,
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                dateController.text = "${picked.day}/${picked.month}/${picked.year}";
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 15),
+                const SizedBox(height: 25),
 
                 // Submit button
                 Padding(
@@ -300,7 +256,11 @@ class _RestartBranchState extends State<RestartBranch> {
                       ),
                       child: Text(
                         'اعادة تشغيل',
-                        style: GoogleFonts.tajawal(color: Colors.white, fontSize: 18),
+                        style: GoogleFonts.tajawal(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -308,32 +268,6 @@ class _RestartBranchState extends State<RestartBranch> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildToggleButton(String title, bool value) {
-    final bool isSelected = isTemporaryStop == value;
-    return Expanded(
-      child: ElevatedButton(
-        onPressed: () {
-          setState(() {
-            isTemporaryStop = value;
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.lightBlue : Colors.white,
-          side: const BorderSide(color: Colors.lightBlue),
-          foregroundColor: isSelected ? Colors.white : Colors.lightBlue,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        child: Text(
-          title,
-          style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          softWrap: false,
         ),
       ),
     );

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../../../../constants.dart';
-
 class PartClothesPage extends StatelessWidget {
   const PartClothesPage({super.key});
 
@@ -11,37 +9,17 @@ class PartClothesPage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          toolbarHeight: 0,
-        ),
-        body: Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Column(
-                children: [
-                  Text(
-                    "قطعة محددة",
-                    style: GoogleFonts.tajawal(
-                      textStyle: const TextStyle(
-                        color: primaryTextColor,
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 20),
-                  _buildInputs(),
-                  const SizedBox(height: 20),
-                  _buildInventoryCards(),
-                  const SizedBox(height: 40),
-                ],
-              ),
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              children: [
+                _buildInputs(),
+                const SizedBox(height: 25),
+                _buildInventoryTable(),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -49,182 +27,251 @@ class PartClothesPage extends StatelessWidget {
     );
   }
 
+  // ----------------------- Inputs Section -----------------------
   Widget _buildInputs() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _fullWidthDropdownWithButton(
+            label: "أختر المخزن",
+            icon: Icons.store,
+            hint: "أختر المخزن",
+            items: ["المخزن 1", "المخزن 2", "المخزن 3"],
+            onChanged: (value) {},
+            buttonPressed: () {},
+          ),
+          const SizedBox(height: 14),
+          _fullWidthInput(
+            label: "الباركود",
+            icon: Icons.qr_code_2,
+            hint: "الباركود",
+          ),
+          const SizedBox(height: 14),
+          _fullWidthDropdown(
+            label: "أختر الصنف",
+            icon: Icons.category,
+            hint: "أختر الصنف",
+            items: ["الصنف 1", "الصنف 2", "الصنف 3"],
+            onChanged: (value) {},
+          ),
+          const SizedBox(height: 14),
+          _fullWidthInputWithButton(
+            label: "كود الصنف",
+            icon: Icons.key,
+            hint: "كود الصنف",
+            buttonPressed: () {},
+          ),
+          const SizedBox(height: 14),
+          _fullWidthDropdownWithButton(
+            label: "أختر اللون",
+            icon: Icons.color_lens,
+            hint: "أختر اللون",
+            items: ["اللون 1", "اللون 2", "اللون 3"],
+            onChanged: (value) {},
+            buttonPressed: () {},
+          ),
+          const SizedBox(height: 14),
+          _fullWidthDropdownWithButton(
+            label: "أختر المقاس",
+            icon: Icons.straighten,
+            hint: "أختر المقاس",
+            items: ["2XL", "XL", "L", "M"],
+            onChanged: (value) {},
+            buttonPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------- Input Widgets -----------------------
+  Widget _fullWidthInput({
+    required String label,
+    required IconData icon,
+    required String hint,
+  }) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InputRow(
-          label: "أختر المخزن",
-          child: DropdownButtonFormField<String>(
-            decoration: _inputDecoration("اختر اسم المخزن"),
-            items: [
-              "المخزن 1",
-              "المخزن 2",
-              "المخزن 3",
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (value) {},
-          ),
+        TextFormField(
+          decoration: _inputDecoration(hint),
         ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "الباركود",
-          child: TextFormField(
-            decoration: _inputDecoration(
-              "الباركود",
-            ).copyWith(prefixIcon: const Icon(Icons.photo_camera_outlined)),
-          ),
-        ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "أختر الصنف",
-          child: DropdownButtonFormField<String>(
-            decoration: _inputDecoration("اختر اسم الصنف"),
-            items: [
-              "الصنف 1",
-              "الصنف 2",
-              "الصنف 3",
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (value) {},
-          ),
-        ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "كود الصنف",
-          child: TextFormField(decoration: _inputDecoration("اكتب كود االصنف")),
-        ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "أختر اللون",
-          child: DropdownButtonFormField<String>(
-            decoration: _inputDecoration("اختر اسم اللون"),
-            items: [
-              "اللون 1",
-              "اللون 2",
-              "اللون 3",
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (value) {},
-          ),
-        ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "أختر المقاس",
-          child: DropdownButtonFormField<String>(
-            decoration: _inputDecoration("اختر اسم المقاس"),
-            items: [
-              "المقاس 1",
-              "المقاس 2",
-              "المقاس 3",
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (value) {},
-          ),
-        ),
-        const SizedBox(height: 15),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.lightBlueAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+      ],
+    );
+  }
+
+  Widget _fullWidthInputWithButton({
+    required String label,
+    required IconData icon,
+    required String hint,
+    required VoidCallback buttonPressed,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                decoration: _inputDecoration(hint),
               ),
             ),
-            onPressed: () {},
-            child: const Text(
-              "بحث",
-              style: TextStyle(fontSize: 18, color: Colors.white),
+            const SizedBox(width: 10),
+            Container(
+              height: 48,
+              width: 48,
+              decoration: BoxDecoration(
+                color: Colors.blueAccent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.visibility, color: Colors.white),
+                onPressed: buttonPressed,
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildInventoryCards() {
+  Widget _fullWidthDropdownWithButton({
+    required String label,
+    required IconData icon,
+    required String hint,
+    required List<String> items,
+    required void Function(String?) onChanged,
+    required VoidCallback buttonPressed,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                decoration: _inputDecoration(hint),
+                items: items
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: onChanged,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              height: 48,
+              width: 48,
+              decoration: BoxDecoration(
+                color: Colors.blueAccent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.visibility, color: Colors.white),
+                onPressed: buttonPressed,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _fullWidthDropdown({
+    required String label,
+    required IconData icon,
+    required String hint,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          decoration: _inputDecoration(hint),
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  // ----------------------- Inventory Table -----------------------
+  Widget _buildInventoryTable() {
     final rows = [
-      ["أبيض", "L", "3", "1", "2"],
-      ["أبيض", "XL", "2", "0", "2"],
-      ["أحمر", "XL", "1", "0", "1"],
-      ["أحمر", "3XL", "2", "0", "2"],
-      ["أسود", "M", "1", "0", "1"],
-      ["أسود", "XL", "2", "1", "1"],
+      ["الرصيد", "الحجز", "المتبقي"], // header
+      ["3", "1", "2"],
+      ["2", "0", "2"],
+      ["1", "0", "1"],
+      ["2", "0", "2"],
+      ["1", "0", "1"],
+      ["2", "1", "1"],
     ];
 
-    return Column(
-      children: rows.map((row) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildInfo("اللون", row[0]),
-                _buildInfo("المقاس", row[1]),
-                _buildInfo("الرصيد", row[2]),
-                _buildInfo("الحجز", row[3]),
-                _buildInfo("الباقي", row[4]),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shadowColor: Colors.blueAccent.withOpacity(.25),
+      child: Column(
+        children: rows.map((row) {
+          bool isHeader = row == rows.first;
+          int index = rows.indexOf(row);
 
-  Widget _buildInfo(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-        Text(value, style: const TextStyle(fontSize: 14)),
-      ],
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+            decoration: BoxDecoration(
+              color: isHeader
+                  ? Colors.blue.shade100.withOpacity(.45)
+                  : index.isEven
+                  ? Colors.blue.shade50.withOpacity(.12)
+                  : Colors.white,
+              borderRadius: index == 0
+                  ? const BorderRadius.vertical(top: Radius.circular(16))
+                  : index == rows.length - 1
+                  ? const BorderRadius.vertical(bottom: Radius.circular(16))
+                  : BorderRadius.zero,
+            ),
+            child: Row(
+              children: row.map((cell) {
+                return Expanded(
+                  child: Text(
+                    cell,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.tajawal(
+                      fontSize: isHeader ? 15 : 14,
+                      fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: GoogleFonts.tajawal(color: Colors.grey.shade400),
       filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      fillColor: Colors.grey.shade100,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-    );
-  }
-}
-
-class InputRow extends StatelessWidget {
-  final String label;
-  final Widget child;
-
-  const InputRow({super.key, required this.label, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(child: SizedBox(height: 50, child: child)),
-        ],
+        borderSide: BorderSide.none,
       ),
     );
   }

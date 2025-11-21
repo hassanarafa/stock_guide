@@ -35,7 +35,7 @@ class _StopBranchState extends State<StopBranch> {
         'http://197.134.252.181/StockGuideAPI/Branch/BranchGetAllByCompanyIdWithStatus?companyId=${widget.companyId}');
 
     final response = await http.get(url);
-    
+
     print(response.body);
 
     if (response.statusCode == 200) {
@@ -46,14 +46,17 @@ class _StopBranchState extends State<StopBranch> {
 
         setState(() {
           branches = data
-              .where((item) => item['statusId'] == 1)
+              .where((item) =>
+          item['statusId'] == 1 && item['isCurrentSubIsValid'] == true)
               .map<Map<String, dynamic>>((item) {
             return {
               'id': item['branchId'],
               'name': item['branchName'],
               'statusId': item['statusId'],
+              'isCurrentSubIsValid': item['isCurrentSubIsValid'],
             };
           }).toList();
+
           isLoading = false;
         });
       } else {

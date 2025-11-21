@@ -807,6 +807,7 @@ class _AddMobileState extends State<AddMobile> {
                                 nameController.clear();
                                 passwordController.clear();
                                 _selectedFee = _feeOptions.first;
+                                await fetchUnpaidUsers(widget.companyId);
                               } else {
                                 await showMessageDialog(
                                   "❌ ${resBody['message']}",

@@ -6,19 +6,19 @@ import 'package:http/http.dart' as http;
 class RestartMobile extends StatefulWidget {
   final int companyId;
   final String userId;
-  const RestartMobile({super.key, required this.companyId, required this.userId});
+  const RestartMobile({
+    super.key,
+    required this.companyId,
+    required this.userId,
+  });
 
   @override
   State<RestartMobile> createState() => _RestartMobileState();
 }
 
 class _RestartMobileState extends State<RestartMobile> {
-  int selectedTab = 0;
-  bool isTemporaryStop = true;
-  TextEditingController dateController = TextEditingController();
-
-  List<Map<String, dynamic>> mobiles = [];
   String? _selectedMobile;
+  List<Map<String, dynamic>> mobiles = [];
   bool isLoading = true;
 
   @override
@@ -44,22 +44,20 @@ class _RestartMobileState extends State<RestartMobile> {
             decoded['data'] is List) {
           final List<dynamic> data = decoded['data'];
 
-          // ✅ Filter only working statuses (2 or 3)
           final filtered = data.where((item) {
-            final statusId = item['statusId'];
-            return statusId == 2 || statusId == 3;
+            final bool isValid = item['isCurrentSubIsValid'] == true;
+            final int? statusId = item['statusId'];
+            return isValid && (statusId == 2 || statusId == 3);
           }).toList();
 
           setState(() {
             mobiles = filtered.map<Map<String, dynamic>>((item) {
               final userName = item['userName']?.toString() ?? '';
               final userNameInApp = item['userNameInApp']?.toString() ?? '';
-              final statusId = item['statusId'];
-
               return {
                 'id': item['userId'],
                 'name': "$userNameInApp - $userName",
-                'statusId': statusId,
+                'statusId': item['statusId'],
               };
             }).toList();
 
@@ -69,15 +67,11 @@ class _RestartMobileState extends State<RestartMobile> {
           throw Exception('Unexpected response format');
         }
       } else {
-        setState(() {
-          isLoading = false;
-        });
-        throw Exception('Failed to fetch branches');
+        setState(() => isLoading = false);
+        throw Exception('Failed to fetch mobiles');
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       print('Error fetching mobiles: $e');
     }
   }
@@ -114,34 +108,10 @@ class _RestartMobileState extends State<RestartMobile> {
     );
   }
 
-
   Future<void> editUserStatus() async {
     if (_selectedMobile == null) {
       await showMessageDialog("برجاء اختيار رقم الموبايل");
       return;
-    }
-
-    final newStatusId = 1;
-
-    String? toStatusDate;
-    if (isTemporaryStop) {
-      if (dateController.text.isEmpty) {
-        await showMessageDialog('يرجى تحديد التاريخ');
-        return;
-      }
-
-      try {
-        final parts = dateController.text.split('/');
-        final pickedDate = DateTime(
-          int.parse(parts[2]),
-          int.parse(parts[1]),
-          int.parse(parts[0]),
-        );
-        toStatusDate = pickedDate.toIso8601String();
-      } catch (e) {
-        await showMessageDialog('تاريخ غير صالح');
-        return;
-      }
     }
 
     final selectedUser = mobiles.firstWhere(
@@ -149,15 +119,13 @@ class _RestartMobileState extends State<RestartMobile> {
       orElse: () => {},
     );
 
-    print("/*/*");
-    print(selectedUser);
     final String selectedUserId = selectedUser["id"].toString();
 
     final body = json.encode({
       "userId": selectedUserId,
       "companyId": widget.companyId,
-      "newStatusId": newStatusId,
-      "toStatusDate": toStatusDate ?? "",
+      "newStatusId": 1, // ✅ Restart always to status 1
+      "toStatusDate": "",
       "fromUserId": widget.userId,
     });
 
@@ -168,13 +136,12 @@ class _RestartMobileState extends State<RestartMobile> {
     );
 
     if (response.statusCode == 200) {
-      await showMessageDialog('✅ تم تغيير حالة الموبايل بنجاح');
+      await showMessageDialog('✅ تم إعادة تشغيل الموبايل بنجاح');
       Navigator.pop(context);
     } else {
-      await showMessageDialog('❌ فشل في تغيير حالة الموبايل');
+      await showMessageDialog('❌ فشل في إعادة تشغيل الموبايل');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -185,11 +152,13 @@ class _RestartMobileState extends State<RestartMobile> {
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
+            child: isLoading
+                ? const CircularProgressIndicator()
+                : Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'اعادة تشغيل موبايل',
+                  'إعادة تشغيل موبايل',
                   style: GoogleFonts.tajawal(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -197,7 +166,6 @@ class _RestartMobileState extends State<RestartMobile> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
@@ -207,24 +175,29 @@ class _RestartMobileState extends State<RestartMobile> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 8),
                         child: DropdownButton<String>(
                           hint: const Text('اختر الموبايل'),
                           value: _selectedMobile,
                           icon: const Icon(Icons.arrow_drop_down),
                           isExpanded: true,
-                          style: const TextStyle(color: Colors.black, fontSize: 16),
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 16),
                           onChanged: (String? newValue) {
                             setState(() {
                               _selectedMobile = newValue;
                             });
                           },
-                          items: mobiles.map<DropdownMenuItem<String>>((mobile) {
-                            final String name = mobile["name"]?.toString() ?? "";
-                            print(name);
+                          items: mobiles
+                              .map<DropdownMenuItem<String>>((mobile) {
+                            final String name =
+                                mobile["name"]?.toString() ?? "";
                             return DropdownMenuItem<String>(
                               value: name,
-                              child: Text(name.isNotEmpty ? name : "غير معروف"),
+                              child: Text(name.isNotEmpty
+                                  ? name
+                                  : "غير معروف"),
                             );
                           }).toList(),
                         ),
@@ -232,79 +205,7 @@ class _RestartMobileState extends State<RestartMobile> {
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: buildToggleButton("تشغيل دائم", false),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: buildToggleButton("تشغيل مؤقت", true),
-                      ),
-                    ],
-                  ),
-                ),
-
-
-                if (isTemporaryStop)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 6,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "حتى تاريخ:",
-                          style: GoogleFonts.tajawal(fontSize: 16),
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: dateController,
-                          decoration: InputDecoration(
-                            hintText: "ادخل التاريخ",
-                            hintStyle: GoogleFonts.tajawal(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.calendar_today,
-                              color: Colors.lightBlue,
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.blue),
-                            ),
-                          ),
-                          readOnly: true,
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                dateController.text =
-                                "${picked.day}/${picked.month}/${picked.year}";
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 15),
-
+                const SizedBox(height: 25),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: SizedBox(
@@ -314,7 +215,9 @@ class _RestartMobileState extends State<RestartMobile> {
                       onPressed: () {
                         if (_selectedMobile == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("من فضلك اختر الموبايل")),
+                            const SnackBar(
+                                content:
+                                Text("من فضلك اختر الموبايل")),
                           );
                           return;
                         }
@@ -327,7 +230,7 @@ class _RestartMobileState extends State<RestartMobile> {
                         ),
                       ),
                       child: Text(
-                        'اعادة تشغيل',
+                        'إعادة تشغيل',
                         style: GoogleFonts.tajawal(
                           color: Colors.white,
                           fontSize: 18,
@@ -339,32 +242,6 @@ class _RestartMobileState extends State<RestartMobile> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildToggleButton(String title, bool value) {
-    final bool isSelected = isTemporaryStop == value;
-    return Expanded(
-      child: ElevatedButton(
-        onPressed: () {
-          setState(() {
-            isTemporaryStop = value;
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.lightBlue : Colors.white,
-          side: const BorderSide(color: Colors.lightBlue),
-          foregroundColor: isSelected ? Colors.white : Colors.lightBlue,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        child: Text(
-          title,
-          style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          softWrap: false,
         ),
       ),
     );

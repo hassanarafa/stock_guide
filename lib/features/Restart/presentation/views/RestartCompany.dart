@@ -1,10 +1,7 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-
-import '../../../home/presentation/views/HomeViewWithComp.dart';
 
 class Company {
   final int id;
@@ -48,9 +45,6 @@ class RestartCompany extends StatefulWidget {
 }
 
 class _RestartCompanyState extends State<RestartCompany> {
-  bool isTemporaryRestart = true;
-  TextEditingController dateController = TextEditingController();
-
   List<Company> companies = [];
   late int _currentStatus;
 
@@ -81,30 +75,10 @@ class _RestartCompanyState extends State<RestartCompany> {
       return;
     }
 
-    String? toStatusDate;
-    if (isTemporaryRestart) {
-      if (dateController.text.isEmpty) {
-        await showMessageDialog('يرجى تحديد التاريخ');
-        return;
-      }
-      try {
-        final parts = dateController.text.split('/');
-        final pickedDate = DateTime(
-          int.parse(parts[2]),
-          int.parse(parts[1]),
-          int.parse(parts[0]),
-        );
-        toStatusDate = pickedDate.toIso8601String();
-      } catch (e) {
-        await showMessageDialog('تاريخ غير صالح');
-        return;
-      }
-    }
-
     final body = json.encode({
       'companyId': widget.companyId,
       'statusId': 1,
-      'toStatusDate': toStatusDate ?? '',
+      'toStatusDate': '',
     });
 
     final response = await http.post(
@@ -170,9 +144,9 @@ class _RestartCompanyState extends State<RestartCompany> {
                 ),
                 const SizedBox(height: 20),
 
+                // Company name
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-
                   child: Text(
                     widget.companyName,
                     style: GoogleFonts.tajawal(
@@ -184,6 +158,8 @@ class _RestartCompanyState extends State<RestartCompany> {
                 ),
 
                 const SizedBox(height: 10),
+
+                // Current status
                 Text(
                   'الحالة الحالية: ${getStatusLabel(_currentStatus)}',
                   style: GoogleFonts.tajawal(
@@ -193,88 +169,6 @@ class _RestartCompanyState extends State<RestartCompany> {
                 ),
 
                 const SizedBox(height: 20),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      buildToggleButton("تشغيل دائم", false),
-                      const SizedBox(width: 10),
-                      buildToggleButton("تشغيل مؤقت", true),
-                    ],
-                  ),
-                ),
-
-                // Date input (only if temporary restart)
-                if (isTemporaryRestart)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 6,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "حتى تاريخ:",
-                          style: GoogleFonts.tajawal(fontSize: 16),
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: dateController,
-                          decoration: InputDecoration(
-                            hintText: "ادخل التاريخ",
-                            hintStyle: GoogleFonts.tajawal(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.calendar_today,
-                              color: Colors.lightBlue,
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.blue),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.blue),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.blue,
-                                width: 2,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                          readOnly: true,
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                dateController.text =
-                                    "${picked.day}/${picked.month}/${picked.year}";
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 15),
 
                 // Submit button
                 Padding(
@@ -305,31 +199,6 @@ class _RestartCompanyState extends State<RestartCompany> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildToggleButton(String title, bool value) {
-    final bool isSelected = isTemporaryRestart == value;
-    return Expanded(
-      child: ElevatedButton(
-        onPressed: () {
-          setState(() {
-            isTemporaryRestart = value;
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.lightBlue : Colors.white,
-          side: const BorderSide(color: Colors.lightBlue),
-          foregroundColor: isSelected ? Colors.white : Colors.lightBlue,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: Text(
-          title,
-          style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 12),
         ),
       ),
     );

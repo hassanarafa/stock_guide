@@ -29,34 +29,51 @@ class BranchFeeSetting {
 }
 
 class BranchModel {
-  final int subscriptionId;
+  final int branchSubscribtionId;
   final int id;
   final String name;
   final double fees;
   final int noMonth;
   final bool isPaid;
   final bool isBackageIsExpire;
+  final int currentStatusId;
 
   BranchModel({
-    required this.subscriptionId,
+    required this.branchSubscribtionId,
     required this.id,
     required this.name,
     required this.fees,
     required this.noMonth,
     required this.isPaid,
     required this.isBackageIsExpire,
+    required this.currentStatusId,
   });
 
   factory BranchModel.fromJson(Map<String, dynamic> json) {
     return BranchModel(
-      subscriptionId: json['branchSubscribtionId'],
+      branchSubscribtionId: json['branchSubscribtionId'] ?? 0,
       id: json['branchId'],
       name: json['branchName'],
       fees: (json['fees'] as num).toDouble(),
       noMonth: json['noMonth'],
       isPaid: json['isPaid'],
       isBackageIsExpire: json['isBackageIsExpire'],
+      currentStatusId: json['currentStatusId'] ?? 0,
     );
+  }
+
+  @override
+  String toString() {
+    return 'BranchModel('
+        'branchSubscribtionId: $branchSubscribtionId, '
+        'id: $id, '
+        'name: $name, '
+        'fees: $fees, '
+        'noMonth: $noMonth, '
+        'isPaid: $isPaid, '
+        'isBackageIsExpire: $isBackageIsExpire, '
+        'currentStatusId: $currentStatusId'
+        ')';
   }
 }
 
@@ -64,7 +81,7 @@ class RenewBranch extends StatefulWidget {
   final int companyId;
   final String userId;
   final String? branchName;
-  final int? branchId; // ✅
+  final int? branchId;
 
   const RenewBranch({
     super.key,
@@ -144,19 +161,23 @@ class _RenewBranchState extends State<RenewBranch> {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
 
-        // ✅ هنا لازم ناخد currentUnpaidSubscription بدل من data مباشرة
         final List<dynamic> data =
-            decoded['data']?['currentUnpaidSubscription'] ?? [];
+            decoded['data']?['noActiveSubscriptionToday'] ?? [];
+
+        final filtered = data.where((e) => e['isPaid'] == true).toList();
 
         if (mounted) {
           setState(() {
-            branches = data.map((e) => BranchModel.fromJson(e)).toList();
+            branches = filtered.map((e) => BranchModel.fromJson(e)).toList();
+            print("=/=/=/=/=/=/=/");
+            print(branches);
+            print("=/=/=/=/=/=/=/");
             isLoadingBranches = false;
 
             if (widget.branchId != null) {
               try {
                 _selectedBranch = branches.firstWhere(
-                  (b) => b.id == widget.branchId,
+                      (b) => b.id == widget.branchId,
                 );
               } catch (e) {
                 _selectedBranch = branches.isNotEmpty ? branches.first : null;
@@ -168,7 +189,7 @@ class _RenewBranchState extends State<RenewBranch> {
         }
 
         if (branches.isEmpty) {
-          await showMessageDialog("لا يوجد فروع تحتاج تجديد ✅");
+          await showMessageDialog("لا يوجد فروع مدفوعة ✅");
         }
       } else {
         throw Exception("فشل تحميل الفروع (كود: ${response.statusCode})");
@@ -216,7 +237,6 @@ class _RenewBranchState extends State<RenewBranch> {
 
     File? file;
 
-    // اختيار طريقة الرفع (ملفات أو كاميرا)
     final choice = await showDialog<String>(
       context: context,
       builder: (ctx) {
@@ -241,15 +261,12 @@ class _RenewBranchState extends State<RenewBranch> {
 
     if (choice == "file") {
       FilePickerResult? result = await FilePicker.platform.pickFiles();
-      if (result != null) {
-        file = File(result.files.single.path!);
-      }
+      if (result != null) file = File(result.files.single.path!);
     } else if (choice == "camera") {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.camera);
-      if (pickedFile != null) {
-        file = File(pickedFile.path);
-      }
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+      );
+      if (pickedFile != null) file = File(pickedFile.path);
     }
 
     if (file == null) {
@@ -257,7 +274,6 @@ class _RenewBranchState extends State<RenewBranch> {
       return;
     }
 
-    // تأكيد قبل الرفع
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -306,18 +322,21 @@ class _RenewBranchState extends State<RenewBranch> {
 
     if (confirm != true) return;
 
-    // رفع الملف
     final uri = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionFile",
+      "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionGroup",
     );
 
     var request = http.MultipartRequest("POST", uri);
-    request.fields['SubscriptionBranchId'] =
-        _selectedBranch?.subscriptionId.toString() ?? "0";
-    request.fields['SubscriptionUserId'] = userId;
+
+    print("///////////////////////////////");
+    print(_selectedBranch!.branchSubscribtionId);
+    print("///////////////////////////////");
+
+    request.fields['SubscribtionBranchIds[0]'] = _selectedBranch!.branchSubscribtionId
+        .toString();
+
     request.files.add(await http.MultipartFile.fromPath('File', file.path));
 
-    // عرض progress indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -326,20 +345,20 @@ class _RenewBranchState extends State<RenewBranch> {
 
     try {
       var response = await request.send();
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(); // إغلاق الـ Loader
 
       if (response.statusCode == 200) {
-        showMessageDialog("تم رفع الإيصال بنجاح ✅");
+        showMessageDialog("✅ تم رفع الإيصال بنجاح");
         setState(() {
           _selectedBranch = null;
           canUploadReceipt = false;
         });
       } else {
-        showMessageDialog("فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
+        showMessageDialog("❌ فشل رفع الإيصال (كود: ${response.statusCode})");
       }
     } catch (e) {
       Navigator.of(context).pop();
-      showMessageDialog("حدث خطأ أثناء رفع الإيصال: $e");
+      showMessageDialog("⚠️ خطأ أثناء الاتصال بالسيرفر: $e");
     }
   }
 
@@ -373,9 +392,11 @@ class _RenewBranchState extends State<RenewBranch> {
       print(response.body);
       print("/*/*");
 
+      print(response.statusCode);
+
       if (response.statusCode == 200) {
         setState(() {
-          canUploadReceipt = true; // ✅ السماح برفع الإيصال بعد نجاح التجديد
+          canUploadReceipt = true;
         });
         await showMessageDialog("تم تجديد الاشتراك بنجاح ✅");
       } else {
@@ -531,10 +552,7 @@ class _RenewBranchState extends State<RenewBranch> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: canUploadReceipt
-                      ? () =>
-                            _uploadReceipt(
-                              userId: widget.userId,
-                            )
+                      ? () => _uploadReceipt(userId: widget.userId)
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: canUploadReceipt

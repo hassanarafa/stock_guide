@@ -10,9 +10,10 @@ class Branch {
   final int branchId;
   final String branchName;
   final bool isPaid;
+  final int? currentStatusId;
   int? noMonths;
   int? fees;
-  String? currentSubscribtion;   // 👈 جديد
+  String? currentSubscribtion;
 
   Branch({
     required this.branchId,
@@ -21,6 +22,7 @@ class Branch {
     this.noMonths,
     this.fees,
     this.currentSubscribtion,
+    this.currentStatusId,
   });
 
   factory Branch.fromJson(Map<String, dynamic> json) {
@@ -28,11 +30,14 @@ class Branch {
       branchId: json['branchId'],
       branchName: json['branchName'],
       isPaid: json['isPaid'] ?? false,
-      noMonths: json['noMonths'] ?? json['noMonth'], // 👈 بعض الـ API يرجعها noMonth
-      fees: (json['fees'] != null)
-          ? int.tryParse(json['fees'].toString())
-          : null,
-      currentSubscribtion: json['currentSubscribtion']?.toString(), // 👈 جديد
+      noMonths: json['noMonths'] ?? json['noMonth'],
+      fees: (json['fees'] is int)
+          ? json['fees']
+          : (json['fees'] is double)
+          ? (json['fees'] as double).toInt()
+          : int.tryParse(json['fees']?.toString() ?? ''),
+      currentSubscribtion: json['currentSubscribtion']?.toString(),
+      currentStatusId: json['currentStatusId'], // ✅ Added
     );
   }
 }
@@ -71,38 +76,12 @@ class _GetBranchesState extends State<GetBranches> {
   }
 
 
-  Future<List<Map<String, dynamic>>> fetchBranchFeeSettings(
-    int branchId,
-  ) async {
-    if (!await _checkInternet()) {
-      await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
-      return [];
-    }
-
-    final url = Uri.parse(
-      "http://197.134.252.181/StockGuideAPI/Branch/GetSettingOfBranchFeesInFirstTime?branchId=$branchId",
-    );
-
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        final List<dynamic> data = body['data'] ?? [];
-        return data.cast<Map<String, dynamic>>();
-      }
-    } catch (e) {
-      print("Error fetching branch fee settings: $e");
-    }
-    return [];
-  }
-
   Future<void> fetchBranches() async {
     if (!await _checkInternet()) {
       await showMessageDialog("⚠️ لا يوجد اتصال بالإنترنت");
       setState(() => isLoading = false);
       return;
     }
-
 
     final url = Uri.parse(
       "http://197.134.252.181/StockGuideAPI/Branch/GetAllBranchesByCompanyIdInRenew?companyId=${widget.companyId}",
@@ -126,20 +105,7 @@ class _GetBranchesState extends State<GetBranches> {
         allBranches.map((json) => Branch.fromJson(json)).toList();
 
         for (var branch in loadedBranches) {
-          final settings = await fetchBranchFeeSettings(branch.branchId);
-          if (settings.isNotEmpty) {
-            branch.noMonths = settings.first['noMonths'];
-            final feeValue = settings.first['fees'];
-            if (feeValue != null) {
-              if (feeValue is double) {
-                branch.fees = feeValue.toInt();
-              } else if (feeValue is int) {
-                branch.fees = feeValue;
-              } else {
-                branch.fees = int.tryParse(feeValue.toString());
-              }
-            }
-          }
+          print("✅ Branch ${branch.branchName}: noMonth=${branch.noMonths}, fees=${branch.fees}");
         }
 
         setState(() {
@@ -195,6 +161,33 @@ class _GetBranchesState extends State<GetBranches> {
       },
     );
   }
+
+  Color _getStatusColor(int? statusId) {
+    switch (statusId) {
+      case 1:
+        return Colors.green; // Active / Paid
+      case 3:
+        return Colors.orange; // Expired / Needs renewal
+      case 2:
+        return Colors.red; // Suspended or error
+      default:
+        return Colors.grey; // Unknown
+    }
+  }
+
+  IconData _getStatusIcon(int? statusId) {
+    switch (statusId) {
+      case 1:
+        return Icons.check; // Success
+      case 3:
+        return Icons.warning_amber_rounded; // Warning
+      case 2:
+        return Icons.close; // Error
+      default:
+        return Icons.help_outline; // Unknown
+    }
+  }
+
 
   void showEditDialog(Branch branch) async {
     final TextEditingController nameController = TextEditingController(
@@ -300,9 +293,9 @@ class _GetBranchesState extends State<GetBranches> {
                 ),
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: branch.isPaid ? Colors.green : Colors.orange,
+                  backgroundColor: _getStatusColor(branch.currentStatusId),
                   child: Icon(
-                    branch.isPaid ? Icons.check : Icons.warning_amber_rounded,
+                    _getStatusIcon(branch.currentStatusId),
                     color: Colors.white,
                     size: 20,
                   ),

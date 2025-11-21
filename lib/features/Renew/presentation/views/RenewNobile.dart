@@ -31,6 +31,7 @@ class MobileUser {
   final String mobileNo;
   final double fees;
   final int months;
+  final int currentStatusId;
 
   MobileUser({
     required this.userId,
@@ -39,6 +40,7 @@ class MobileUser {
     required this.mobileNo,
     required this.fees,
     required this.months,
+    required this.currentStatusId,
   });
 
   factory MobileUser.fromJson(Map<String, dynamic> json) {
@@ -47,8 +49,9 @@ class MobileUser {
       subscriptionUserId: json['userSubscribtionId'] ?? 0,
       name: json['displayName'] ?? '',
       mobileNo: json['mobile'] ?? '',
-      fees: (json['fees'] as num?)?.toDouble() ?? 0.0,
+      fees: (json['fees'] as num).toDouble(),
       months: json['noMonth'] ?? 0,
+      currentStatusId: json['currentStatusId'] ?? 0,
     );
   }
 }
@@ -117,17 +120,27 @@ class _RenewMobileState extends State<RenewMobile> {
       final url = Uri.parse(
         "http://197.134.252.181/StockGuideAPI/User/GetAllUsersByCompanyIdInRenew?companyId=${widget.companyId}",
       );
+
       final response = await http.get(url);
 
+      print("==== Mobiles Response ====");
       print(response.body);
+      print("=========================");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
 
-        final List<dynamic> data =
+        final List<dynamic> unpaidSubs =
             decoded['data']?['currentUnpaidSubscription'] ?? [];
 
-        List<MobileUser> loadedMobiles = data
+        final List<dynamic> noActiveSubs =
+            decoded['data']?['noActiveSubscriptionToday'] ?? [];
+
+        // دمج كل المستخدمين
+        final combined = [...unpaidSubs, ...noActiveSubs];
+
+        // تحويل إلى List<MobileUser>
+        List<MobileUser> loadedMobiles = combined
             .map((e) => MobileUser.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
@@ -136,26 +149,24 @@ class _RenewMobileState extends State<RenewMobile> {
             mobiles = loadedMobiles;
             isLoadingMobiles = false;
 
+            // اختيار موبايل تلقائياً لو جاي من صفحة سابقة
             if (widget.mobileName != null && mobiles.isNotEmpty) {
               try {
-                _selectedMobile = mobiles.firstWhere(
-                  (m) => m.mobileNo == widget.mobileName,
-                );
+                _selectedMobile =
+                    mobiles.firstWhere((m) => m.mobileNo == widget.mobileName);
               } catch (_) {
                 _selectedMobile = null;
               }
-            } else {
-              _selectedMobile = null;
             }
           });
         }
       } else {
-        throw Exception(
-          "فشل تحميل أرقام الموبايل (كود: ${response.statusCode})",
-        );
+        throw Exception("فشل تحميل الموبايلات (كود: ${response.statusCode})");
       }
     } catch (e) {
-      setState(() => isLoadingMobiles = false);
+      if (mounted) {
+        setState(() => isLoadingMobiles = false);
+      }
       showMessageDialog("خطأ في تحميل الموبايلات: $e");
     }
   }
@@ -196,37 +207,31 @@ class _RenewMobileState extends State<RenewMobile> {
 
     final choice = await showDialog<String>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text("اختيار طريقة الرفع", style: GoogleFonts.tajawal()),
-          content: Text("من فضلك اختر الطريقة:", style: GoogleFonts.tajawal()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, "file"),
-              child: Text("📂 من الملفات", style: GoogleFonts.tajawal()),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, "camera"),
-              child: Text("📸 من الكاميرا", style: GoogleFonts.tajawal()),
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        title: Text("اختيار طريقة الرفع", style: GoogleFonts.tajawal()),
+        content: Text("من فضلك اختر طريقة رفع الإيصال:", style: GoogleFonts.tajawal()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, "file"),
+            child: Text("📂 من الملفات", style: GoogleFonts.tajawal()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, "camera"),
+            child: Text("📸 من الكاميرا", style: GoogleFonts.tajawal()),
+          ),
+        ],
+      ),
     );
 
     if (choice == null) return;
 
     if (choice == "file") {
       FilePickerResult? result = await FilePicker.platform.pickFiles();
-      if (result != null) {
-        file = File(result.files.single.path!);
-      }
+      if (result != null) file = File(result.files.single.path!);
     } else if (choice == "camera") {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.camera);
-      if (pickedFile != null) {
-        file = File(pickedFile.path);
-      }
+      if (pickedFile != null) file = File(pickedFile.path);
     }
 
     if (file == null) {
@@ -285,8 +290,12 @@ class _RenewMobileState extends State<RenewMobile> {
     final uri = Uri.parse(
       "http://197.134.252.181/StockGuideAPI/Files/UploadSubscriptionGroupForUsers",
     );
+
     var request = http.MultipartRequest("POST", uri);
-    request.fields['SubscribtionUserIds'] = _selectedMobile?.userId ?? userId;
+
+    request.fields['SubscribtionUserIds[0]'] =
+        _selectedMobile!.subscriptionUserId.toString();
+
     request.files.add(await http.MultipartFile.fromPath('File', file.path));
 
     showDialog(
@@ -300,16 +309,14 @@ class _RenewMobileState extends State<RenewMobile> {
       Navigator.of(context).pop();
 
       if (response.statusCode == 200) {
-        showMessageDialog("تم رفع الإيصال بنجاح ✅");
-        setState(() {
-          _canUploadReceipt = false;
-        });
+        showMessageDialog("✅ تم رفع الإيصال بنجاح");
+        setState(() => _canUploadReceipt = false);
       } else {
-        showMessageDialog("فشل رفع الإيصال ❌ (كود: ${response.statusCode})");
+        showMessageDialog("❌ فشل رفع الإيصال (كود: ${response.statusCode})");
       }
     } catch (e) {
       Navigator.of(context).pop();
-      showMessageDialog("حدث خطأ أثناء رفع الإيصال: $e");
+      showMessageDialog("⚠️ خطأ أثناء الاتصال بالسيرفر: $e");
     }
   }
 

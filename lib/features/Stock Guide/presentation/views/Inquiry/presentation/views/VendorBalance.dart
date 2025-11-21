@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class VendorBalancePage extends StatelessWidget {
   const VendorBalancePage({super.key});
@@ -8,27 +9,18 @@ class VendorBalancePage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          toolbarHeight: 0,
-        ),
-        body: Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  _buildInputs(),
-                  const SizedBox(height: 20),
-                  _buildProductInfo(),
-                  const SizedBox(height: 20),
-                  _buildInventoryCards(),
-                  const SizedBox(height: 40),
-                ],
-              ),
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                const SizedBox(height: 25),
+                _buildInputs(),
+                const SizedBox(height: 30),
+                _buildBalanceTableCard(),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -37,176 +29,136 @@ class VendorBalancePage extends StatelessWidget {
   }
 
   Widget _buildInputs() {
-    return Column(
-      children: [
-        InputRow(
-          label: "الاسم",
-          child: DropdownButtonFormField<String>(
-            decoration: _inputDecoration("اختر اسم المخزن"),
-            items: [
-              "المخزن 1",
-              "المخزن 2",
-              "المخزن 3",
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (value) {},
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          DropdownButtonFormField<String>(
+            decoration: _inputDecoration("اختر المورد"),
+            items: ["محلات سكريم", "المخزن الرئيسي", "فرع فيصل"]
+                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .toList(),
+            onChanged: (v) {},
           ),
-        ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "الموبايل",
-          child: TextFormField(decoration: _inputDecoration("اكتب الموبايل")),
-        ),
-        const SizedBox(height: 15),
-        InputRow(
-          label: "كود العميل",
-          child: TextFormField(
-            decoration: _inputDecoration("كود العميل")
-                .copyWith(prefixIcon: const Icon(Icons.photo_camera_outlined)),
+          const SizedBox(height: 18),
+
+          TextFormField(
+            keyboardType: TextInputType.phone,
+            decoration: _inputDecoration("الموبايل"),
           ),
-        ),
-        const SizedBox(height: 25),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.lightBlueAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          const SizedBox(height: 18),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  decoration: _inputDecoration("كود المورد"),
+                ),
               ),
-            ),
-            onPressed: () {},
-            child: const Text(
-              "بحث",
-              style: TextStyle(fontSize: 18, color: Colors.white),
-            ),
+              const SizedBox(width: 12),
+              Container(
+                height: 48,
+                width: 48,
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.visibility, color: Colors.white),
+                  onPressed: () {},
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildProductInfo() {
-    return Column(
-      children: [
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: const [
-            Column(
-              children: [
-                Text(
-                  "السعر قبل: 600 ج",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "السعر بعد: 480 ج",
-                  style: TextStyle(color: Colors.lightBlueAccent),
-                ),
-              ],
-            ),
-            Column(
-              children: [
-                Text(
-                  "نسبة خصم: %20",
-                  style: TextStyle(color: Colors.lightBlueAccent),
-                ),
-                Text(
-                  "قيمة خصم: 120 ج",
-                  style: TextStyle(color: Colors.lightBlueAccent),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInventoryCards() {
-    final rows = [
-      ["أبيض", "L", "3", "1", "2"],
-      ["أبيض", "XL", "2", "0", "2"],
-      ["أحمر", "XL", "1", "0", "1"],
-      ["أحمر", "3XL", "2", "0", "2"],
-      ["أسود", "M", "1", "0", "1"],
-      ["أسود", "XL", "2", "1", "1"],
-    ];
-
-    return Column(
-      children: rows.map((row) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildInfo("اللون", row[0]),
-                _buildInfo("المقاس", row[1]),
-                _buildInfo("الرصيد", row[2]),
-                _buildInfo("الحجز", row[3]),
-                _buildInfo("الباقي", row[4]),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildInfo(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-        Text(value, style: const TextStyle(fontSize: 14)),
-      ],
+        ],
+      ),
     );
   }
 
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: GoogleFonts.tajawal(color: Colors.grey.shade400),
       filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      fillColor: Colors.grey.shade100,
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.grey),
+        borderSide: BorderSide.none,
       ),
     );
   }
-}
 
-class InputRow extends StatelessWidget {
-  final String label;
-  final Widget child;
+  Widget _buildBalanceTableCard() {
+    final rows = [
+      ["الرصيد", "157,550 ج"],
+      ["قيمة آخر دفعة", "15,500 ج"],
+      ["تاريخ الدفعة", "2025-5-22"],
+      ["ملاحظة الدفعة", "نهائي شتاء 2025"],
+      ["ملاحظة المورد", "ملتزم في المواعيد"],
+    ];
 
-  const InputRow({super.key, required this.label, required this.child});
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shadowColor: Colors.blueAccent.withOpacity(.2),
+      child: Column(
+        children: rows.asMap().entries.map((entry) {
+          int index = entry.key;
+          var row = entry.value;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
-              ),
+          return Container(
+            padding:
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            decoration: BoxDecoration(
+              color: index.isEven
+                  ? Colors.blue.shade50.withOpacity(.15)
+                  : Colors.white,
+              borderRadius: index == 0
+                  ? const BorderRadius.vertical(top: Radius.circular(16))
+                  : index == rows.length - 1
+                  ? const BorderRadius.vertical(
+                  bottom: Radius.circular(16))
+                  : BorderRadius.zero,
             ),
-          ),
-          Expanded(child: SizedBox(height: 50, child: child)),
-        ],
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    row[0],
+                    style: GoogleFonts.tajawal(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blueGrey.shade800,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    row[1],
+                    textAlign: TextAlign.left,
+                    style: GoogleFonts.tajawal(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

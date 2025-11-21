@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,21 +24,13 @@ class _LoginViewState extends State<LoginView> {
   final TextEditingController passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     phoneController.dispose();
     passwordController.dispose();
     super.dispose();
-  }
-
-  Future<bool> _checkInternet() async {
-    try {
-      final result = await InternetAddress.lookup('google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } on SocketException {
-      return false;
-    }
   }
 
   @override
@@ -217,7 +208,7 @@ class _LoginViewState extends State<LoginView> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: () async {
+                        onPressed: _isLoading ? null : () async {
                           final String phone = phoneController.text.trim();
                           final String password = passwordController.text;
 
@@ -231,24 +222,15 @@ class _LoginViewState extends State<LoginView> {
                             return;
                           }
 
-                          final arabicRegex = RegExp(r'[\u0600-\u06FF\u0660-\u0669]');
-                          if (arabicRegex.hasMatch(password)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('كلمة المرور يجب أن تحتوي على أحرف وأرقام إنجليزية فقط ❌'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          final Uri loginUrl = Uri.parse('http://197.134.252.181/StockGuideAPI/User/login');
-                          final Map<String, dynamic> loginBody = {
-                            "userName": phone,
-                            "password": password,
-                          };
+                          setState(() => _isLoading = true); // ✅ Start Loading
 
                           try {
+                            final Uri loginUrl = Uri.parse('http://197.134.252.181/StockGuideAPI/User/login');
+                            final Map<String, dynamic> loginBody = {
+                              "userName": phone,
+                              "password": password,
+                            };
+
                             final loginResponse = await http.post(
                               loginUrl,
                               headers: {'Content-Type': 'application/json'},
@@ -261,33 +243,22 @@ class _LoginViewState extends State<LoginView> {
                             if (loginJson['status'] == 1) {
                               final String userId = loginJson['data']['userId'];
 
-                              // ✅ Extract userCurrentSubIsPaid
                               final companies = loginJson['data']['returnUserCompaniesStatus'] as List<dynamic>;
                               bool userCurrentSubIsPaid = false;
                               if (companies.isNotEmpty) {
-                                print("//////////////////////");
-
                                 userCurrentSubIsPaid = companies[0]['userCurrentSubIsPaid'] ?? false;
                               }
 
-                              print("//////////////////////");
-                              print("userCurrentSubIsPaid: $userCurrentSubIsPaid");
-                              print("//////////////////////");
-
-                              // ✅ Store in SharedPreferences (optional)
                               final prefs = await SharedPreferences.getInstance();
                               await prefs.setString('userId', userId);
                               await prefs.setBool('userCurrentSubIsPaid', userCurrentSubIsPaid);
 
-                              // ✅ Fetch companies
                               final companyUrl = Uri.parse(
                                 'http://197.134.252.181/StockGuideAPI/Company/GetAllByUser?userId=$userId',
                               );
 
                               final companyResponse = await http.get(companyUrl);
                               final companyJson = jsonDecode(companyResponse.body);
-
-                              print("Company Response: $companyJson");
 
                               if (companyJson['status'] == 1 &&
                                   companyJson['data'] != null &&
@@ -297,7 +268,7 @@ class _LoginViewState extends State<LoginView> {
                                   MaterialPageRoute(
                                     builder: (_) => HomeWithCompanies(
                                       userId: userId,
-                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here
+                                      userCurrentSubIsPaid: userCurrentSubIsPaid,
                                     ),
                                   ),
                                 );
@@ -306,7 +277,7 @@ class _LoginViewState extends State<LoginView> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => HomeView(
-                                      userCurrentSubIsPaid: userCurrentSubIsPaid, // 👈 Pass it here too
+                                      userCurrentSubIsPaid: userCurrentSubIsPaid,
                                     ),
                                   ),
                                 );
@@ -330,8 +301,19 @@ class _LoginViewState extends State<LoginView> {
                               ),
                             );
                           }
+
+                          setState(() => _isLoading = false); // ✅ Stop Loading
                         },
-                        child: Text(
+                        child: _isLoading
+                            ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : Text(
                           'تسجيل الدخول',
                           style: GoogleFonts.tajawal(
                             textStyle: const TextStyle(
